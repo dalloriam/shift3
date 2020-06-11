@@ -1,4 +1,4 @@
-pub use crate::{Trigger, TriggerConfiguration};
+pub use protocol::{Trigger, TriggerConfiguration};
 
 pub trait TriggerConfigLoader {
     type Error;

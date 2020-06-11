@@ -3,5 +3,6 @@ members = [
     "action-executor",
     "trigger-interpreter",
     "trigger-system",
-    "trigger-svc"
+    "trigger-svc",
+    "protocol"
 ]
