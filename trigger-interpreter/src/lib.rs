@@ -1,12 +1,7 @@
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
+//! Backing library for the Trigger Interpretation Service.
 
-    #[test]
-    fn always_true() {
-        assert!(true);
-    }
-}
+// Module declarations.
+mod interface;
+
+// Public crate interface.
+pub use interface::{ActionManifestQueueWriter, TriggerQueueReader};
