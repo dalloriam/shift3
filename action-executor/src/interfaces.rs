@@ -1,4 +1,4 @@
-pub use protocol::ActionManifest;
+use protocol::ActionManifest;
 
 pub trait ActionManifestQueueReader {
     type Error;
