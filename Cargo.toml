@@ -1,5 +1,7 @@
 [workspace]
 members = [
-    "triggering",
+    "action-executor",
+    "trigger-interpreter",
+    "trigger-system",
     "trigger-svc"
 ]

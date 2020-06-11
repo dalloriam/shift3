@@ -1,5 +1,5 @@
 [package]
-name = "triggering"
+name = "trigger-system"
 version = "0.1.0"
 authors = ["Laurent Leclerc-Poulin <laurentleclercpoulin@gmail.com>"]
 edition = "2018"

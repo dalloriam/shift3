@@ -27,23 +27,3 @@ impl TriggerConfigLoader for FileTriggerReader {
         Ok(config)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::FileTriggerReader;
-    use crate::TriggerConfigLoader;
-    use std::path::PathBuf;
-
-    #[test]
-    fn test_reader_init() {
-        let path = PathBuf::from("test_data/configs.json");
-        assert!(path.exists());
-
-        let reader = FileTriggerReader::new(PathBuf::from("test_data/configs.json"));
-
-        match reader.get_all_configurations() {
-            Ok(c) => println!("{:?}", c),
-            Err(e) => panic!(e),
-        }
-    }
-}
