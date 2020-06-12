@@ -4,5 +4,6 @@ members = [
     "trigger-interpreter",
     "trigger-system",
     "trigger-svc",
-    "protocol"
+    "protocol",
+    "publisher",
 ]
