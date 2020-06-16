@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "action-executor",
+    "gcloud",
     "trigger-interpreter",
     "trigger-system",
     "trigger-svc",

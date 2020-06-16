@@ -1,0 +1,12 @@
+{
+    "type": "service_account",
+    "project_id": "some-project",
+    "private_key_id": "d65eb4894b23b23d570aed5adaf26096d5bb0051",
+    "private_key": "-----BEGIN RSA PRIVATE KEY----- MIICWwIBAAKBgH+ei8J9gvIR2lUfc+3BPQC73yP9iEx2sDgHF6Vatll2ewqCQ5SO Dm7JRp52bqFehcUd08FFpCdGro8dfscDjEvfQbW5O1typBBBJeNGzDF+oVgBY80K AjNCPoSE2I6XMFTF1E7G6EiQjjBfnyy9nEp2Q9DHQNaA+/3I03nrszCjAgMBAAEC gYBu/U9lbc0FhHtTDtC/FRFd4wa1AVmZzpuBjsGE4Li4Y6+suw/VUhrBRTGyvSOI GnHSthck/tE+C13jP+6zXKWVSwZIvd+jzezMDVd6KKbqkK3xQ4H9BryKQ7P97iIr kTXb9TCLdRX6877UgFkOdjiyjlNXzXmLF0PcF1WQJNpDEQJBAPIMggdBJdlsgB4V DyBpYqo5RCk7riMXjC+9tmUDoH4O1jItb4aFcr2VVUZNtF5fQfS2dC/z7vCGStlF +Dhd5QsCQQCG+ZnrlUvtcoAI0doFC6VFolPb82yo1BwmctafIysRbjir4GVWPC55 LygTyo5zaKs2uGlrYZ3cN68II/2y8fHJAkEAqlMc6MfyP2Z3XTPKei9Oa6Ryj2Vc q3r1fd7My5ZayHneRl7snMepLzk3UYp6gvIbMn11kwzfNcf6QZxYCCoicwJAPtRz pOlTdc2l8fUVouGf5oFAvhNbUl+iVveAFoX9Z1jCgqerJHBRRdIAuu3AT9K6WHeR gw3muPsmvAhc8W6UmQJAV16KrBDoMPZ3yiKIyUVeAiRTDlgPFRGZhWiFcbrQTfbU gy9yV4Bo/NFkguxucaoWYAKF4eeD3tGio57wFY0koQ== -----END RSA PRIVATE KEY-----",
+    "client_email": "mock_app@appspot.gserviceaccount.com",
+    "client_id": "111104816727272291010106",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/mock_app%40appspot.gserviceaccount.com"
+}
