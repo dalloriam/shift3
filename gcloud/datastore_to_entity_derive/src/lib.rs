@@ -4,7 +4,6 @@ use proc_macro::TokenStream;
 
 use quote::quote;
 
-use syn;
 use syn::{Data, DataStruct, Fields, Ident};
 
 fn impl_to_entity(ast: &syn::DeriveInput) -> TokenStream {
