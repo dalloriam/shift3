@@ -2,7 +2,7 @@
 //! User-friendly GCloud wrappers.
 
 mod auth;
-pub mod datastore;
 mod https;
 
 pub use auth::{AuthError, AuthProvider};
+pub mod datastore;

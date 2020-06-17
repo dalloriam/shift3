@@ -11,6 +11,9 @@ struct Person {
     age: i32,
 }
 
+#[derive(ToEntity)]
+struct OtherThing {}
+
 fn main() {
     let auth = AuthProvider::from_json_file(SK_PATH).unwrap();
     let mut client = DatastoreClient::new(String::from("shift3-dev"), auth);

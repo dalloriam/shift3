@@ -87,3 +87,62 @@ impl From<DatastoreValue> for Value {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use super::{DSEntity, DatastoreValue, ToEntity};
+    use crate as gcloud; // Hack for the derive macro.
+
+    #[test]
+    fn from_string() {
+        let dv = DatastoreValue::from(String::from("asdf"));
+        assert_eq!(dv, DatastoreValue::Str(String::from("asdf")))
+    }
+
+    #[test]
+    fn from_int() {
+        let dv = DatastoreValue::from(18);
+        assert_eq!(dv, DatastoreValue::Int(18));
+    }
+
+    #[test]
+    fn from_u64() {
+        let dv = DatastoreValue::from(18 as u64);
+        assert_eq!(dv, DatastoreValue::Id(18));
+    }
+
+    #[test]
+    fn from_vec() {
+        let dv = DatastoreValue::from(vec![1, 2, 3]);
+        assert_eq!(
+            dv,
+            DatastoreValue::Array(vec![
+                DatastoreValue::Int(1),
+                DatastoreValue::Int(2),
+                DatastoreValue::Int(3)
+            ])
+        );
+    }
+
+    #[test]
+    fn from_sub_entity() {
+        #[derive(ToEntity)]
+        struct Person {
+            age: i32,
+        }
+
+        let dv = DatastoreValue::from(Person { age: 42 });
+        let mut expected_hashmap = HashMap::new();
+        expected_hashmap.insert(String::from("age"), DatastoreValue::Int(42));
+
+        assert_eq!(
+            dv,
+            DatastoreValue::Map(DSEntity {
+                entity_id: "Person",
+                entity_data: expected_hashmap
+            })
+        )
+    }
+}

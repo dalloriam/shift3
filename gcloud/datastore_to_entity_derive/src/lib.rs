@@ -22,19 +22,16 @@ fn impl_to_entity(ast: &syn::DeriveInput) -> TokenStream {
         &fields.iter().map(|ref field| &field.ident).collect();
 
     let gen = quote! {
-        use std::collections::HashMap;
-        use gcloud::datastore::{DatastoreValue, DSEntity};
-
-        const _ENTITY_ID: &str = stringify!(#type_name);
 
         impl ToEntity for #type_name {
 
-            fn into_entity(self) -> DSEntity {
-                let mut entity_data = HashMap::new();
+            fn into_entity(self) -> gcloud::datastore::DSEntity {
+                const _ENTITY_ID: &str = stringify!(#type_name);
+                let mut entity_data = std::collections::HashMap::new();
                 #(
-                    entity_data.insert(String::from(stringify!(#struct_fields)), DatastoreValue::from(self.#struct_fields));
+                    entity_data.insert(String::from(stringify!(#struct_fields)), gcloud::datastore::DatastoreValue::from(self.#struct_fields));
                 )*
-                DSEntity{entity_data, entity_id: _ENTITY_ID}
+                gcloud::datastore::DSEntity{entity_data, entity_id: _ENTITY_ID}
             }
         }
     };
