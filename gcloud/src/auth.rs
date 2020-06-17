@@ -36,7 +36,7 @@ impl AuthProvider {
     /// # Errors
     /// Returns an AuthError if the file cannot be read or if it doesn't contain
     /// valid JSON.
-    pub fn from_json_file<P: AsRef<Path>>(path: &P) -> Result<AuthProvider> {
+    pub fn from_json_file<P: AsRef<Path>>(path: P) -> Result<AuthProvider> {
         // This is needed because `yup_oauth2` doesn't support `std::Path`...
         let path_str = String::from(path.as_ref().to_string_lossy());
 
