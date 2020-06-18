@@ -6,3 +6,4 @@ mod https;
 mod pub_sub;
 
 pub use auth::{AuthError, AuthProvider};
+pub use pub_sub::{PubSubClient, PubSubError};

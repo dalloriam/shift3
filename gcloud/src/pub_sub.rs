@@ -1,10 +1,13 @@
-use google_pubsub1::{PublishResponse, Pubsub};
+use google_pubsub1::Pubsub;
+
 use serde::{de, Serialize};
+
 use snafu::{ResultExt, Snafu};
 
 use crate::{https, AuthProvider};
 
 #[derive(Debug, Snafu)]
+#[allow(missing_docs)] // Otherwise, cargo will ask to document each field of each error, which is a bit overkill.
 pub enum PubSubError {
     #[snafu(display("Failed to serialize the data structure : {}", source))]
     FailedToSerializeDataStruct { source: serde_json::Error },
@@ -15,18 +18,19 @@ pub enum PubSubError {
     #[snafu(display("Failed to decode the data structure : {}", source))]
     FailedToDecodeDataStruc { source: base64::DecodeError },
 
-    #[snafu(display("Failed publish the topic : {}", source))]
+    #[snafu(display("Failed to publish the topic : {}", source))]
     FailedToPublishTopic { source: google_pubsub1::Error },
 
-    #[snafu(display("Failed pull the subscription : {}", source))]
+    #[snafu(display("Failed to pull the subscription : {}", source))]
     FailedToPullSubscription { source: google_pubsub1::Error },
 
-    #[snafu(display("Unexpected empty response"))]
+    #[snafu(display("PubSubClient - Unexpected empty response"))]
     ErrorEmptyResponse,
 }
 
 type Result<T> = std::result::Result<T, PubSubError>;
 
+/// Google Cloud Pub/Sub client
 pub struct PubSubClient {
     lib: Pubsub<hyper::Client, AuthProvider>,
 
@@ -34,6 +38,7 @@ pub struct PubSubClient {
 }
 
 impl PubSubClient {
+    /// Creates a new client using a project identifier and an authentication provider.
     pub fn new(project_id: &str, auth_provider: AuthProvider) -> PubSubClient {
         let pub_sub = Pubsub::new(https::new_tls_client(), auth_provider);
 
@@ -43,9 +48,13 @@ impl PubSubClient {
         }
     }
 
-    pub fn publish<T>(&self, data: T, topic: &str) -> Result<PublishResponse>
+    /// Publish an entity to a Pub/Sub topic.
+    ///
+    /// The function allows to push a JSON serializable entity to a Pub/Sub topic.
+    /// Therefore, the entity must implement serde's Serialize trait.
+    pub fn publish<Entity>(&self, data: Entity, topic: &str) -> Result<()>
     where
-        T: Serialize,
+        Entity: Serialize,
     {
         let json_body = serde_json::to_vec(&data).context(FailedToSerializeDataStruct)?;
 
@@ -58,8 +67,7 @@ impl PubSubClient {
             messages: Some(vec![message]),
         };
 
-        let (_res, pub_resp) = self
-            .lib
+        self.lib
             .projects()
             .topics_publish(
                 request,
@@ -68,12 +76,16 @@ impl PubSubClient {
             .doit()
             .context(FailedToPublishTopic)?;
 
-        Ok(pub_resp)
+        Ok(())
     }
 
-    pub fn pull<T>(&self, subscription: &str) -> Result<T>
+    /// Pulls a single entity from a Pub/Sub subscription.
+    ///
+    /// The function allows to pull a JSON deserializable entity from a Pub/Sub subscription.
+    /// Therefore, the entity must implement serde's DeserializeOwned trait.
+    pub fn pull<Entity>(&self, subscription: &str) -> Result<Entity>
     where
-        T: de::DeserializeOwned,
+        Entity: de::DeserializeOwned,
     {
         let request = google_pubsub1::PullRequest {
             return_immediately: Some(false),
@@ -96,21 +108,31 @@ impl PubSubClient {
         let received_messages = pull_resp
             .received_messages
             .ok_or_else(|| PubSubError::ErrorEmptyResponse)?;
+
+        // Makes sure we can pick the first element of received_messages knowing it's the vector only item.
+        if received_messages.len() != 1 {
+            panic!("The number of received messages does not fit the number of max messages set within the pull request parameters")
+        }
+
         let received_message = received_messages
             .first()
             .ok_or_else(|| PubSubError::ErrorEmptyResponse)?;
+
         let message = received_message
-            .clone()
             .message
+            .as_ref()
             .ok_or_else(|| PubSubError::ErrorEmptyResponse)?;
+
         let data = message
             .data
+            .as_ref()
             .ok_or_else(|| PubSubError::ErrorEmptyResponse)?;
 
         let decoded = base64::decode(&data).context(FailedToDecodeDataStruc)?;
 
-        let resp: T = serde_json::from_slice(&decoded).context(FailedToDeserializeDataStruct)?;
+        let entity: Entity =
+            serde_json::from_slice(&decoded).context(FailedToDeserializeDataStruct)?;
 
-        Ok(resp)
+        Ok(entity)
     }
 }
