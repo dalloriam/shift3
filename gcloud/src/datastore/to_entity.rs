@@ -8,8 +8,11 @@ use crate::datastore::DatastoreValue;
 /// Thin wrapper around a google cloud datastore entity.
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct DSEntity {
+    /// The name of the entity.
+    pub entity_name: Option<String>,
+
     /// The Kind of the entity.
-    pub entity_id: &'static str,
+    pub entity_kind: &'static str,
 
     /// The data fields of the entity.
     pub entity_data: HashMap<String, DatastoreValue>,
@@ -20,7 +23,8 @@ impl From<DSEntity> for Entity {
         Entity {
             key: Some(Key {
                 path: Some(vec![PathElement {
-                    kind: Some(String::from(ent.entity_id)),
+                    kind: Some(String::from(ent.entity_kind)),
+                    name: ent.entity_name,
                     ..Default::default()
                 }]),
                 partition_id: None,
@@ -39,6 +43,9 @@ impl From<DSEntity> for Entity {
 pub trait ToEntity {
     /// Returns an entity.
     fn into_entity(self) -> DSEntity;
+
+    /// Return the entity kind.
+    fn get_kind() -> &'static str;
 }
 
 #[cfg(test)]
@@ -59,7 +66,8 @@ mod tests {
             DatastoreValue::Str(String::from("Husky")),
         );
         let ds = DSEntity {
-            entity_id: "Dog",
+            entity_name: None,
+            entity_kind: "Dog",
             entity_data,
         };
 

@@ -140,7 +140,8 @@ mod tests {
         assert_eq!(
             dv,
             DatastoreValue::Map(DSEntity {
-                entity_id: "Person",
+                entity_name: None,
+                entity_kind: "Person",
                 entity_data: expected_hashmap
             })
         )

@@ -11,21 +11,23 @@ struct Person {
     age: i32,
 }
 
-#[derive(ToEntity)]
-struct OtherThing {}
-
 fn main() {
     let auth = AuthProvider::from_json_file(SK_PATH).unwrap();
     let mut client = DatastoreClient::new(String::from("shift3-dev"), auth);
 
-    for _i in 0..100 {
-        let p = Person {
-            name: String::from("John Smith"),
-            age: 22,
-        };
+    let p = Person {
+        name: String::from("John Smith"),
+        age: 22,
+    };
 
-        client.insert(p).unwrap();
-    }
+    let b = Person {
+        name: String::from("Jane Doe"),
+        age: 22,
+    };
 
-    client.commit().unwrap();
+    //client.insert(p).unwrap();
+    //client.insert(b).unwrap();
+    //client.commit().unwrap();
+
+    client.get_all::<Person>().unwrap();
 }
