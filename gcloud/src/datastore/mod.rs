@@ -8,6 +8,8 @@ mod value;
 extern crate datastore_to_entity_derive;
 pub use datastore_to_entity_derive::ToEntity;
 
+use to_entity::Error as EntityConversionError;
+
 // Public package interface.
 pub use client::DatastoreClient;
 pub use to_entity::{DSEntity, ToEntity};

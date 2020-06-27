@@ -35,7 +35,16 @@ fn impl_to_entity(ast: &syn::DeriveInput) -> TokenStream {
                 #(
                     entity_data.insert(String::from(stringify!(#struct_fields)), gcloud::datastore::DatastoreValue::from(self.#struct_fields));
                 )*
-                gcloud::datastore::DSEntity{entity_data, entity_kind: Self::get_kind(), entity_name: None}
+                gcloud::datastore::DSEntity{entity_data, entity_kind: String::from(Self::get_kind()), entity_name: None}
+            }
+
+            fn from_entity(mut ds: gcloud::datastore::DSEntity) -> Self {
+                // TODO: Remove unwraps.
+                Self{
+                    #(
+                        #struct_fields: std::convert::TryInto::try_into(ds.entity_data.remove(stringify!(#struct_fields)).unwrap()).unwrap(),
+                    )*
+                }
             }
         }
     };

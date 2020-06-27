@@ -1,9 +1,17 @@
 use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::iter::FromIterator;
 
 use google_datastore1::{Entity, Key, PathElement};
 
+use snafu::{ensure, Snafu};
+
 use crate::datastore::DatastoreValue;
+
+#[derive(Debug, Snafu)]
+pub enum Error {
+    InvalidEntityData,
+}
 
 /// Thin wrapper around a google cloud datastore entity.
 #[derive(Clone, Eq, PartialEq, Debug)]
@@ -12,10 +20,42 @@ pub struct DSEntity {
     pub entity_name: Option<String>,
 
     /// The Kind of the entity.
-    pub entity_kind: &'static str,
+    pub entity_kind: String,
 
     /// The data fields of the entity.
     pub entity_data: HashMap<String, DatastoreValue>,
+}
+
+impl TryFrom<Entity> for DSEntity {
+    type Error = Error;
+
+    fn try_from(ent: Entity) -> Result<DSEntity, Error> {
+        let entity_key = ent.key.ok_or(Error::InvalidEntityData)?;
+        let mut path = entity_key.path.ok_or(Error::InvalidEntityData)?;
+
+        ensure!(!path.is_empty(), InvalidEntityData);
+        let root_elem: PathElement = path.remove(0); // Panics if vec is empty -- hence ensure!()
+
+        let entity_kind = root_elem.kind.ok_or(Error::InvalidEntityData)?;
+        let entity_name = root_elem.name;
+
+        let properties = ent.properties.ok_or(Error::InvalidEntityData)?;
+
+        let mut entity_data = HashMap::new();
+
+        for (k, v) in properties.into_iter() {
+            entity_data.insert(
+                k,
+                DatastoreValue::try_from(v).map_err(|_e| Error::InvalidEntityData)?,
+            );
+        }
+
+        Ok(DSEntity {
+            entity_name,
+            entity_kind,
+            entity_data,
+        })
+    }
 }
 
 impl From<DSEntity> for Entity {
@@ -46,6 +86,9 @@ pub trait ToEntity {
 
     /// Return the entity kind.
     fn get_kind() -> &'static str;
+
+    /// Rebuild the original type from a DS entity.
+    fn from_entity(ds: DSEntity) -> Self;
 }
 
 #[cfg(test)]
@@ -67,7 +110,7 @@ mod tests {
         );
         let ds = DSEntity {
             entity_name: None,
-            entity_kind: "Dog",
+            entity_kind: String::from("Dog"),
             entity_data,
         };
 

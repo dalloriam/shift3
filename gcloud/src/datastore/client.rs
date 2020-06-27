@@ -1,3 +1,4 @@
+use std::convert::TryFrom;
 use std::fmt;
 use std::mem;
 
@@ -11,7 +12,7 @@ use hyper::Client;
 use snafu::{ResultExt, Snafu};
 
 use crate::{
-    datastore::{DSEntity, ToEntity},
+    datastore::{DSEntity, EntityConversionError, ToEntity},
     https, AuthProvider,
 };
 
@@ -32,6 +33,8 @@ impl fmt::Display for CommitMode {
 pub enum DatastoreError {
     InsertFailed { source: GoogleDsError },
     QueryFailed { source: GoogleDsError },
+    BadEntity { source: EntityConversionError },
+    IncompleteData,
 }
 
 type Result<T> = std::result::Result<T, DatastoreError>;
@@ -137,7 +140,7 @@ impl DatastoreClient {
     }
 
     /// Gets all items of a given type.
-    pub fn get_all<T>(&self) -> Result<T>
+    pub fn get_all<T>(&self) -> Result<Vec<T>>
     where
         T: ToEntity,
     {
@@ -152,7 +155,7 @@ impl DatastoreClient {
 
         println!("{:?}", query);
 
-        let (resp, r) = self
+        let (_resp, r) = self
             .hub
             .projects()
             .run_query(
@@ -165,8 +168,17 @@ impl DatastoreClient {
             .doit()
             .context(QueryFailed)?;
 
-        println!("{:?}", r);
-        unimplemented!();
+        let batch = r.batch.ok_or(DatastoreError::IncompleteData)?;
+        let entities = batch.entity_results.ok_or(DatastoreError::IncompleteData)?;
+
+        let mut results = Vec::new();
+        for entity_result in entities.into_iter() {
+            let entity = entity_result.entity.ok_or(DatastoreError::IncompleteData)?;
+            let user_type = T::from_entity(DSEntity::try_from(entity).context(BadEntity)?);
+            results.push(user_type);
+        }
+
+        Ok(results)
     }
 }
 
