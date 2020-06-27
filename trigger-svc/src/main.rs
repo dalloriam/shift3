@@ -1,11 +1,11 @@
 use gcloud::{
-    datastore::{DatastoreClient, ToEntity},
+    datastore::{DatastoreClient, DatastoreEntity},
     AuthProvider,
 };
 
 const SK_PATH: &str = "/home/wduss/.google/dalloriam-dev.json";
 
-#[derive(Debug, ToEntity)]
+#[derive(Debug, DatastoreEntity)]
 struct Person {
     name: String,
     age: i32,

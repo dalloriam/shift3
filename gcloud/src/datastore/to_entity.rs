@@ -80,7 +80,7 @@ impl From<DSEntity> for Entity {
 
 /// Converts a type to a metadata map format supported by the
 /// Google Datastore API.
-pub trait ToEntity {
+pub trait DatastoreEntity {
     /// Returns an entity.
     fn into_entity(self) -> DSEntity;
 

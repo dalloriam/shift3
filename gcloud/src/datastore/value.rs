@@ -4,7 +4,7 @@ use google_datastore1::{ArrayValue, Value};
 
 use snafu::{ResultExt, Snafu};
 
-use crate::datastore::{DSEntity, EntityConversionError, ToEntity};
+use crate::datastore::{DSEntity, DatastoreEntity, EntityConversionError};
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -17,7 +17,7 @@ type Result<T> = std::result::Result<T, Error>;
 
 /// Wrapper around supported datastore-serializable types.
 ///
-/// Used mainly by derive(ToEntity)
+/// Used mainly by derive(DatastoreEntity)
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub enum DatastoreValue {
     /// String datastore value.
@@ -117,7 +117,7 @@ where
 
 impl<T> From<T> for DatastoreValue
 where
-    T: ToEntity,
+    T: DatastoreEntity,
 {
     fn from(v: T) -> Self {
         DatastoreValue::Map(v.into_entity())
@@ -199,7 +199,7 @@ impl From<DatastoreValue> for Value {
 mod tests {
     use std::collections::HashMap;
 
-    use super::{DSEntity, DatastoreValue, ToEntity};
+    use super::{DSEntity, DatastoreEntity, DatastoreValue};
     use crate as gcloud; // Hack for the derive macro.
 
     #[test]
@@ -235,7 +235,7 @@ mod tests {
 
     #[test]
     fn from_sub_entity() {
-        #[derive(ToEntity)]
+        #[derive(DatastoreEntity)]
         struct Person {
             age: i32,
         }

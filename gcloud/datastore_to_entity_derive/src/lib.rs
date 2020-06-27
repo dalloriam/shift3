@@ -6,7 +6,7 @@ use quote::quote;
 
 use syn::{Data, DataStruct, Fields, Ident};
 
-fn impl_to_entity(ast: &syn::DeriveInput) -> TokenStream {
+fn impl_datastore_entity(ast: &syn::DeriveInput) -> TokenStream {
     let type_name = &ast.ident;
 
     let fields = match &ast.data {
@@ -22,7 +22,7 @@ fn impl_to_entity(ast: &syn::DeriveInput) -> TokenStream {
 
     let gen = quote! {
 
-        impl ToEntity for #type_name {
+        impl DatastoreEntity for #type_name {
 
             #[inline]
             fn get_kind() -> &'static str {
@@ -52,9 +52,9 @@ fn impl_to_entity(ast: &syn::DeriveInput) -> TokenStream {
     gen.into()
 }
 
-#[proc_macro_derive(ToEntity)]
-pub fn to_entity_derive(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(DatastoreEntity)]
+pub fn datastore_entity_derive(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).unwrap();
 
-    impl_to_entity(&ast)
+    impl_datastore_entity(&ast)
 }
