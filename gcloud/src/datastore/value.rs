@@ -4,7 +4,7 @@ use google_datastore1::{ArrayValue, Value};
 
 use snafu::{ResultExt, Snafu};
 
-use crate::datastore::{DSEntity, DatastoreEntity, EntityConversionError};
+use crate::datastore::EntityConversionError;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -31,9 +31,6 @@ pub enum DatastoreValue {
 
     /// Array datastore value.
     Array(Vec<DatastoreValue>),
-
-    /// Map of string and datastore value.
-    Map(DSEntity),
 }
 
 impl From<String> for DatastoreValue {
@@ -115,15 +112,6 @@ where
     }
 }
 
-impl<T> From<T> for DatastoreValue
-where
-    T: DatastoreEntity,
-{
-    fn from(v: T) -> Self {
-        DatastoreValue::Map(v.into_entity())
-    }
-}
-
 impl TryFrom<Value> for DatastoreValue {
     type Error = Error;
 
@@ -156,10 +144,6 @@ impl TryFrom<Value> for DatastoreValue {
             let converted_result: Result<Vec<DatastoreValue>> =
                 values.into_iter().map(DatastoreValue::try_from).collect();
             Ok(DatastoreValue::Array(converted_result?))
-        } else if let Some(v) = value.entity_value {
-            Ok(DatastoreValue::Map(
-                DSEntity::try_from(v).context(NestedEntityReadError)?,
-            ))
         } else {
             Err(Error::DeserializationError)
         }
@@ -187,20 +171,13 @@ impl From<DatastoreValue> for Value {
                 }),
                 ..Default::default()
             },
-            DatastoreValue::Map(entity) => Value {
-                entity_value: Some(entity.into()),
-                ..Default::default()
-            },
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
-    use super::{DSEntity, DatastoreEntity, DatastoreValue};
-    use crate as gcloud; // Hack for the derive macro.
+    use super::DatastoreValue;
 
     #[test]
     fn from_string() {
@@ -231,26 +208,5 @@ mod tests {
                 DatastoreValue::Int(3)
             ])
         );
-    }
-
-    #[test]
-    fn from_sub_entity() {
-        #[derive(DatastoreEntity)]
-        struct Person {
-            age: i32,
-        }
-
-        let dv = DatastoreValue::from(Person { age: 42 });
-        let mut expected_hashmap = HashMap::new();
-        expected_hashmap.insert(String::from("age"), DatastoreValue::Int(42));
-
-        assert_eq!(
-            dv,
-            DatastoreValue::Map(DSEntity {
-                entity_name: None,
-                entity_kind: String::from("Person"),
-                entity_data: expected_hashmap
-            })
-        )
     }
 }
