@@ -4,11 +4,11 @@ mod client;
 mod to_entity;
 mod value;
 
+use to_entity::Error as EntityConversionError;
+
 // Custom-derive import & re-export.
 extern crate datastore_to_entity_derive;
 pub use datastore_to_entity_derive::DatastoreEntity;
-
-use to_entity::Error as EntityConversionError;
 
 // Public package interface.
 pub use client::DatastoreClient;
