@@ -1,11 +1,11 @@
 use gcloud::{
-    datastore::{DatastoreClient, ToEntity},
+    datastore::{DatastoreClient, DatastoreEntity},
     AuthProvider,
 };
 
 const SK_PATH: &str = "/home/wduss/.google/dalloriam-dev.json";
 
-#[derive(ToEntity)]
+#[derive(Debug, DatastoreEntity)]
 struct Person {
     name: String,
     age: i32,
@@ -25,9 +25,10 @@ fn main() {
         age: 22,
     };
 
-    //client.insert(p).unwrap();
-    //client.insert(b).unwrap();
-    //client.commit().unwrap();
+    client.insert(p).unwrap();
+    client.insert(b).unwrap();
+    client.commit().unwrap();
 
-    client.get_all::<Person>().unwrap();
+    let persons = client.get_all::<Person>().unwrap();
+    println!("{:?}", persons);
 }

@@ -1,3 +1,4 @@
+use std::convert::TryFrom;
 use std::fmt;
 use std::mem;
 
@@ -11,7 +12,7 @@ use hyper::Client;
 use snafu::{ResultExt, Snafu};
 
 use crate::{
-    datastore::{DSEntity, ToEntity},
+    datastore::{DSEntity, DatastoreEntity, EntityConversionError},
     https, AuthProvider,
 };
 
@@ -32,6 +33,8 @@ impl fmt::Display for CommitMode {
 pub enum DatastoreError {
     InsertFailed { source: GoogleDsError },
     QueryFailed { source: GoogleDsError },
+    BadEntity { source: EntityConversionError },
+    IncompleteData,
 }
 
 type Result<T> = std::result::Result<T, DatastoreError>;
@@ -124,22 +127,22 @@ impl DatastoreClient {
     ///
     /// This method actually inserts a mutation to the mutation buffer, which must be committed
     /// before dropping the client for fear of skipping operations.
-    pub fn insert<T: ToEntity>(&mut self, item: T) -> Result<()> {
+    pub fn insert<T: DatastoreEntity>(&mut self, item: T) -> Result<()> {
         let ds_entity = item.into_entity();
         self.insert_ds(ds_entity)
     }
 
     /// Inserts a new entity to datastore, specifying an explicit ID.
-    pub fn insert_with_name<T: ToEntity>(&mut self, name: String, item: T) -> Result<()> {
+    pub fn insert_with_name<T: DatastoreEntity>(&mut self, name: String, item: T) -> Result<()> {
         let mut ds_entity = item.into_entity();
         ds_entity.entity_name = Some(name);
         self.insert_ds(ds_entity)
     }
 
     /// Gets all items of a given type.
-    pub fn get_all<T>(&self) -> Result<T>
+    pub fn get_all<T>(&self) -> Result<Vec<T>>
     where
-        T: ToEntity,
+        T: DatastoreEntity,
     {
         let query = Query {
             kind: Some(vec![KindExpression {
@@ -150,9 +153,7 @@ impl DatastoreClient {
             ..Default::default()
         };
 
-        println!("{:?}", query);
-
-        let (resp, r) = self
+        let (_resp, r) = self
             .hub
             .projects()
             .run_query(
@@ -165,8 +166,17 @@ impl DatastoreClient {
             .doit()
             .context(QueryFailed)?;
 
-        println!("{:?}", r);
-        unimplemented!();
+        let batch = r.batch.ok_or(DatastoreError::IncompleteData)?;
+        let entities = batch.entity_results.ok_or(DatastoreError::IncompleteData)?;
+
+        let mut results = Vec::new();
+        for entity_result in entities.into_iter() {
+            let entity = entity_result.entity.ok_or(DatastoreError::IncompleteData)?;
+            let user_type = T::from_entity(DSEntity::try_from(entity).context(BadEntity)?);
+            results.push(user_type);
+        }
+
+        Ok(results)
     }
 }
 
