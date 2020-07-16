@@ -1,10 +1,23 @@
+use std::convert::TryFrom;
+
 use google_datastore1::{ArrayValue, Value};
 
-use crate::datastore::{DSEntity, ToEntity};
+use snafu::{ResultExt, Snafu};
+
+use crate::datastore::EntityConversionError;
+
+#[derive(Debug, Snafu)]
+pub enum Error {
+    DeserializationError,
+    InvalidCast { source: std::num::ParseIntError },
+    NestedEntityReadError { source: EntityConversionError },
+}
+
+type Result<T> = std::result::Result<T, Error>;
 
 /// Wrapper around supported datastore-serializable types.
 ///
-/// Used mainly by derive(ToEntity)
+/// Used mainly by derive(DatastoreEntity)
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub enum DatastoreValue {
     /// String datastore value.
@@ -18,14 +31,22 @@ pub enum DatastoreValue {
 
     /// Array datastore value.
     Array(Vec<DatastoreValue>),
-
-    /// Map of string and datastore value.
-    Map(DSEntity),
 }
 
 impl From<String> for DatastoreValue {
     fn from(v: String) -> Self {
         DatastoreValue::Str(v)
+    }
+}
+
+impl TryFrom<DatastoreValue> for String {
+    type Error = Error;
+    fn try_from(v: DatastoreValue) -> Result<String> {
+        if let DatastoreValue::Str(s) = v {
+            Ok(s)
+        } else {
+            Err(Error::DeserializationError)
+        }
     }
 }
 
@@ -35,9 +56,33 @@ impl From<i32> for DatastoreValue {
     }
 }
 
+impl TryFrom<DatastoreValue> for i32 {
+    type Error = Error;
+    fn try_from(v: DatastoreValue) -> Result<i32> {
+        if let DatastoreValue::Int(s) = v {
+            Ok(s)
+        } else {
+            Err(Error::DeserializationError)
+        }
+    }
+}
+
 impl From<u64> for DatastoreValue {
     fn from(v: u64) -> Self {
         DatastoreValue::Id(v)
+    }
+}
+
+impl TryFrom<DatastoreValue> for u64 {
+    type Error = Error;
+    fn try_from(v: DatastoreValue) -> Result<u64> {
+        if let DatastoreValue::Id(s) = v {
+            Ok(s)
+        } else if let DatastoreValue::Int(i) = v {
+            Ok(i as u64) // i32 -> u64 conversion is safe
+        } else {
+            Err(Error::DeserializationError)
+        }
     }
 }
 
@@ -50,12 +95,58 @@ where
     }
 }
 
-impl<T> From<T> for DatastoreValue
+impl<T> TryFrom<DatastoreValue> for Vec<T>
 where
-    T: ToEntity,
+    T: TryFrom<DatastoreValue>,
 {
-    fn from(v: T) -> Self {
-        DatastoreValue::Map(v.into_entity())
+    type Error = Error;
+
+    fn try_from(v: DatastoreValue) -> Result<Vec<T>> {
+        if let DatastoreValue::Array(s) = v {
+            let res: std::result::Result<Vec<T>, T::Error> =
+                s.into_iter().map(T::try_from).collect();
+            res.map_err(|_e| Error::DeserializationError)
+        } else {
+            Err(Error::DeserializationError)
+        }
+    }
+}
+
+impl TryFrom<Value> for DatastoreValue {
+    type Error = Error;
+
+    fn try_from(value: Value) -> Result<Self> {
+        if let Some(v) = value.integer_value {
+            assert!(value.string_value.is_none());
+            assert!(value.array_value.is_none());
+            assert!(value.entity_value.is_none());
+
+            // This is tricky because we encode both i32 & u64 in Value::integer_value.
+            // This means that we have a bit of magic to do to read it back properly
+            // without overflowing, underflowing, or truncating.
+
+            // int128 can represent all values of u64 and i32.
+            let i = v.parse::<i128>().context(InvalidCast)?;
+
+            if i < 0 || i < std::u64::MAX as i128 {
+                // Safe to convert to i32.
+                Ok(DatastoreValue::Int(i as i32))
+            } else {
+                Ok(DatastoreValue::Id(i as u64))
+            }
+        } else if let Some(v) = value.string_value {
+            assert!(value.array_value.is_none());
+            assert!(value.entity_value.is_none());
+            Ok(DatastoreValue::Str(v))
+        } else if let Some(v) = value.array_value {
+            assert!(value.entity_value.is_none());
+            let values = v.values.ok_or(Error::DeserializationError)?;
+            let converted_result: Result<Vec<DatastoreValue>> =
+                values.into_iter().map(DatastoreValue::try_from).collect();
+            Ok(DatastoreValue::Array(converted_result?))
+        } else {
+            Err(Error::DeserializationError)
+        }
     }
 }
 
@@ -80,20 +171,13 @@ impl From<DatastoreValue> for Value {
                 }),
                 ..Default::default()
             },
-            DatastoreValue::Map(entity) => Value {
-                entity_value: Some(entity.into()),
-                ..Default::default()
-            },
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
-    use super::{DSEntity, DatastoreValue, ToEntity};
-    use crate as gcloud; // Hack for the derive macro.
+    use super::DatastoreValue;
 
     #[test]
     fn from_string() {
@@ -124,25 +208,5 @@ mod tests {
                 DatastoreValue::Int(3)
             ])
         );
-    }
-
-    #[test]
-    fn from_sub_entity() {
-        #[derive(ToEntity)]
-        struct Person {
-            age: i32,
-        }
-
-        let dv = DatastoreValue::from(Person { age: 42 });
-        let mut expected_hashmap = HashMap::new();
-        expected_hashmap.insert(String::from("age"), DatastoreValue::Int(42));
-
-        assert_eq!(
-            dv,
-            DatastoreValue::Map(DSEntity {
-                entity_id: "Person",
-                entity_data: expected_hashmap
-            })
-        )
     }
 }
