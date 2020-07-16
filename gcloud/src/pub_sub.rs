@@ -1,3 +1,4 @@
+//! Simple wrapper for interacting with google pubsub.
 use google_pubsub1::Pubsub;
 
 use serde::{de, Serialize};
@@ -39,12 +40,12 @@ pub struct PubSubClient {
 
 impl PubSubClient {
     /// Creates a new client using a project identifier and an authentication provider.
-    pub fn new(project_id: &str, auth_provider: AuthProvider) -> PubSubClient {
+    pub fn new(project_id: String, auth_provider: AuthProvider) -> PubSubClient {
         let pub_sub = Pubsub::new(https::new_tls_client(), auth_provider);
 
         PubSubClient {
             lib: pub_sub,
-            project_id: String::from(project_id),
+            project_id,
         }
     }
 
