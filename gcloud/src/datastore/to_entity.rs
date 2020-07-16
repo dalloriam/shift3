@@ -63,7 +63,7 @@ impl From<DSEntity> for Entity {
         Entity {
             key: Some(Key {
                 path: Some(vec![PathElement {
-                    kind: Some(String::from(ent.entity_kind)),
+                    kind: Some(ent.entity_kind),
                     name: ent.entity_name,
                     ..Default::default()
                 }]),
