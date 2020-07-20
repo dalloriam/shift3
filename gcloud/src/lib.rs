@@ -6,3 +6,4 @@ mod https;
 
 pub use auth::{AuthError, AuthProvider};
 pub mod datastore;
+pub mod pub_sub;
