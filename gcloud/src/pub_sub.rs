@@ -17,7 +17,7 @@ pub enum PubSubError {
     FailedToDeserializeDataStruct { source: serde_json::Error },
 
     #[snafu(display("Failed to decode the data structure : {}", source))]
-    FailedToDecodeDataStruc { source: base64::DecodeError },
+    FailedToDecodeDataStruct { source: base64::DecodeError },
 
     #[snafu(display("Failed to publish the topic : {}", source))]
     FailedToPublishTopic { source: google_pubsub1::Error },
@@ -26,14 +26,14 @@ pub enum PubSubError {
     FailedToPullSubscription { source: google_pubsub1::Error },
 
     #[snafu(display("PubSubClient - Unexpected empty response"))]
-    ErrorEmptyResponse,
+    EmptyResponse,
 }
 
 type Result<T> = std::result::Result<T, PubSubError>;
 
 /// Google Cloud Pub/Sub client
 pub struct PubSubClient {
-    lib: Pubsub<hyper::Client, AuthProvider>,
+    pubsub_connection: Pubsub<hyper::Client, AuthProvider>,
 
     project_id: String,
 }
@@ -44,7 +44,7 @@ impl PubSubClient {
         let pub_sub = Pubsub::new(https::new_tls_client(), auth_provider);
 
         PubSubClient {
-            lib: pub_sub,
+            pubsub_connection: pub_sub,
             project_id,
         }
     }
@@ -68,7 +68,7 @@ impl PubSubClient {
             messages: Some(vec![message]),
         };
 
-        self.lib
+        self.pubsub_connection
             .projects()
             .topics_publish(
                 request,
@@ -94,7 +94,7 @@ impl PubSubClient {
         };
 
         let (_resp, pull_resp) = self
-            .lib
+            .pubsub_connection
             .projects()
             .subscriptions_pull(
                 request,
@@ -108,7 +108,7 @@ impl PubSubClient {
 
         let received_messages = pull_resp
             .received_messages
-            .ok_or_else(|| PubSubError::ErrorEmptyResponse)?;
+            .ok_or(PubSubError::EmptyResponse)?;
 
         // Makes sure we can pick the first element of received_messages knowing it's the vector only item.
         if received_messages.len() != 1 {
@@ -117,19 +117,19 @@ impl PubSubClient {
 
         let received_message = received_messages
             .first()
-            .ok_or_else(|| PubSubError::ErrorEmptyResponse)?;
+            .ok_or(PubSubError::EmptyResponse)?;
 
         let message = received_message
             .message
             .as_ref()
-            .ok_or_else(|| PubSubError::ErrorEmptyResponse)?;
+            .ok_or(PubSubError::EmptyResponse)?;
 
         let data = message
             .data
             .as_ref()
-            .ok_or_else(|| PubSubError::ErrorEmptyResponse)?;
+            .ok_or(PubSubError::EmptyResponse)?;
 
-        let decoded = base64::decode(&data).context(FailedToDecodeDataStruc)?;
+        let decoded = base64::decode(&data).context(FailedToDecodeDataStruct)?;
 
         let entity: Entity =
             serde_json::from_slice(&decoded).context(FailedToDeserializeDataStruct)?;
