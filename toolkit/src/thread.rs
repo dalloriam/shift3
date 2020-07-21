@@ -1,9 +1,13 @@
+//! Threading utilities.
+
 use std::sync::mpsc;
 use std::thread;
 
 use snafu::{ensure, Snafu};
 
+/// Errors returned by thread utilities.
 #[derive(Debug, Snafu)]
+#[allow(missing_docs)] // Otherwise, cargo will ask to document each field of each error, which is a bit overkill.
 pub enum Error {
     AlreadyStopped,
     ShutdownRequestError,
@@ -12,15 +16,19 @@ pub enum Error {
 
 type Result<T> = std::result::Result<T, Error>;
 
+/// An interruptible thread.
+///
+/// Intended for long-running processes that can be stopped externally.
 pub struct StoppableThread<T> {
-    pub join_handle: Option<thread::JoinHandle<T>>,
-    pub tx_stop: mpsc::Sender<()>,
+    join_handle: Option<thread::JoinHandle<T>>,
+    tx_stop: mpsc::Sender<()>,
 }
 
 impl<T> StoppableThread<T>
 where
     T: Send + 'static,
 {
+    /// Spawns a stoppable thread with the provided function.
     pub fn spawn<F>(f: F) -> Self
     where
         F: FnOnce(mpsc::Receiver<()>) -> T,
@@ -35,6 +43,9 @@ where
         }
     }
 
+    /// Joins the thread.
+    ///
+    /// This method sends the stop signal to the thread and waits for it to complete.
     pub fn join(&mut self) -> Result<T> {
         ensure!(self.join_handle.is_some(), AlreadyStopped);
 
@@ -59,5 +70,58 @@ impl<T> Drop for StoppableThread<T> {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::mpsc;
+    use std::thread;
+    use std::time;
+
+    use super::StoppableThread;
+
+    fn do_something_forever(stop_rx: mpsc::Receiver<()>, sleep_ms: u64) {
+        loop {
+            thread::sleep(time::Duration::from_millis(sleep_ms));
+            if stop_rx.try_recv().is_ok() {
+                break;
+            }
+        }
+    }
+
+    fn do_something_and_count(stop_rx: mpsc::Receiver<()>) -> u64 {
+        let mut counter = 0;
+        loop {
+            thread::sleep(time::Duration::from_millis(10));
+            counter += 1;
+
+            if stop_rx.try_recv().is_ok() {
+                break;
+            }
+        }
+
+        counter
+    }
+
+    #[test]
+    fn test_spawn_no_return() {
+        const SLEEP_MS: u64 = 200;
+        let mut handle = StoppableThread::spawn(|rx| do_something_forever(rx, SLEEP_MS));
+
+        let time_before = time::Instant::now();
+        let r = handle.join();
+        let time_after = time::Instant::now();
+
+        assert!(r.is_ok());
+        assert!(time_after.duration_since(time_before).as_millis() < 2 * SLEEP_MS as u128);
+    }
+
+    #[test]
+    fn test_spawn_result() {
+        let mut handle = StoppableThread::spawn(do_something_and_count);
+        thread::sleep(time::Duration::from_millis(150));
+        let r = handle.join().unwrap();
+        assert!(r >= 15);
     }
 }
