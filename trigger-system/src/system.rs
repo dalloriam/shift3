@@ -2,8 +2,8 @@ use std::sync::mpsc;
 
 use toolkit::thread::StoppableThread;
 
+use crate::interface::{TriggerConfigLoader, TriggerQueueWriter};
 use crate::manager::TriggerManager;
-use crate::{CfgLoader, QueueWriter};
 
 /// The trigger system manages the operation of the trigger service.
 /// It manages its own threads and resources.
@@ -13,9 +13,12 @@ pub struct TriggerSystem {
 
 impl TriggerSystem {
     /// Creates a new trigger system.
-    pub fn start<CfgErr: Send, QueueErr: Send>(
-        cfg_loader: CfgLoader<CfgErr>,
-        queue_writer: QueueWriter<QueueErr>,
+    pub fn start<
+        T: 'static + TriggerConfigLoader + Send,
+        Q: 'static + TriggerQueueWriter + Send,
+    >(
+        cfg_loader: T,
+        queue_writer: Q,
     ) -> Self {
         Self {
             handle: StoppableThread::spawn(move |stop_rx| {
@@ -24,10 +27,10 @@ impl TriggerSystem {
         }
     }
 
-    fn start_manager_thread<CfgErr: Send, QueueErr: Send>(
+    fn start_manager_thread<T: TriggerConfigLoader + Send, Q: TriggerQueueWriter + Send>(
         stop_rx: mpsc::Receiver<()>,
-        cfg_loader: CfgLoader<CfgErr>,
-        queue_writer: QueueWriter<QueueErr>,
+        cfg_loader: T,
+        queue_writer: Q,
     ) {
         let manager = TriggerManager::new(cfg_loader, queue_writer);
     }

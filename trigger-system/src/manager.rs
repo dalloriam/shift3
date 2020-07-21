@@ -1,13 +1,21 @@
-use crate::{CfgLoader, QueueWriter};
+use crate::interface::{TriggerConfigLoader, TriggerQueueWriter};
 
 /// The trigger manager is the "main" thread of the trigger system.
-pub struct TriggerManager<CfgErr, QueueErr> {
-    cfg_loader: CfgLoader<CfgErr>,
-    queue_writer: QueueWriter<QueueErr>,
+pub struct TriggerManager<T, Q>
+where
+    T: TriggerConfigLoader,
+    Q: TriggerQueueWriter,
+{
+    cfg_loader: T,
+    queue_writer: Q,
 }
 
-impl<CfgErr, QueueErr> TriggerManager<CfgErr, QueueErr> {
-    pub fn new(cfg_loader: CfgLoader<CfgErr>, queue_writer: QueueWriter<QueueErr>) -> Self {
+impl<T, Q> TriggerManager<T, Q>
+where
+    T: TriggerConfigLoader,
+    Q: TriggerQueueWriter,
+{
+    pub fn new(cfg_loader: T, queue_writer: Q) -> Self {
         TriggerManager {
             cfg_loader,
             queue_writer,
