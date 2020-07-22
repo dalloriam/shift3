@@ -1,4 +1,4 @@
-use std::sync::mpsc;
+use anyhow::{Context, Result, Error};
 
 use toolkit::thread::StoppableThread;
 
@@ -20,18 +20,28 @@ impl TriggerSystem {
         cfg_loader: T,
         queue_writer: Q,
     ) -> Self {
-        Self {
+        log::debug!("starting system");
+
+        let sys = Self {
             handle: StoppableThread::spawn(move |stop_rx| {
-                TriggerSystem::start_manager_thread(stop_rx, cfg_loader, queue_writer)
+                TriggerManager::new(stop_rx, cfg_loader, queue_writer).start()
             }),
-        }
+        };
+
+        log::info!("system started");
+
+        sys
     }
 
-    fn start_manager_thread<T: TriggerConfigLoader + Send, Q: TriggerQueueWriter + Send>(
-        stop_rx: mpsc::Receiver<()>,
-        cfg_loader: T,
-        queue_writer: Q,
-    ) {
-        let manager = TriggerManager::new(cfg_loader, queue_writer);
+    pub fn stop(mut self) -> Result<()> {
+        log::debug!("received request to stop");
+
+        self.handle
+            .join()
+            .context("Failed to stop trigger manager")?;
+
+        log::debug!("stop complete");
+
+        Ok(())
     }
 }

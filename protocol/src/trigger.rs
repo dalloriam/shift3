@@ -4,10 +4,10 @@ use crate::RuleID;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct TriggerConfiguration {
-    id: u64,
-    rule: RuleID,
-    trigger_type: String,
-    data: Vec<u8>,
+    pub id: u64,
+    pub rule: RuleID,
+    pub trigger_type: String,
+    pub data: Vec<u8>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

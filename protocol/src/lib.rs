@@ -1,5 +1,8 @@
+#![recursion_limit = "10"]
+
 mod action_manifest;
 mod trigger;
+mod variant;
 
 pub type RuleID = u64;
 
