@@ -1,6 +1,14 @@
+use std::collections::HashMap;
+
 use anyhow::Result;
 
 use protocol::{Trigger, TriggerConfiguration};
+
+pub trait TriggerExecutor {
+    fn execute(&mut self, payload: &str) -> Result<Vec<Trigger>>;
+}
+
+pub type ExecutorObj = Box<dyn TriggerExecutor>;
 
 enum TriggerType {
     DirectoryWatch,
@@ -16,8 +24,9 @@ impl From<String> for TriggerType {
     }
 }
 
-pub struct TriggerExecutor {}
+pub fn load_executors() -> Result<HashMap<String, ExecutorObj>> {
+    // TODO: Use config here instead of hardcoding.
+    let mut executors = HashMap::new();
 
-impl TriggerExecutor {
-    pub fn new() {}
+    Ok(executors)
 }

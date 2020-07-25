@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::iter::FromIterator;
 
+use serde::{Deserialize, Serialize};
+
 use snafu::Snafu;
 
 #[derive(Debug, Snafu)]
@@ -9,6 +11,8 @@ pub enum VariantError {
     InvalidType,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(untagged)]
 pub enum Variant {
     Str(String),
     Int(i32),

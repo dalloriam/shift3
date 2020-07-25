@@ -1,4 +1,4 @@
-use anyhow::Error;
+use std::convert::Infallible;
 
 use crate::interface::{Trigger, TriggerConfigLoader, TriggerConfiguration, TriggerQueueWriter};
 
@@ -11,7 +11,7 @@ impl Default for Dummy {
 }
 
 impl TriggerConfigLoader for Dummy {
-    type Error = Error;
+    type Error = Infallible;
 
     fn get_all_configurations(&self) -> Result<Vec<TriggerConfiguration>, Self::Error> {
         Ok(Vec::new())
@@ -19,7 +19,7 @@ impl TriggerConfigLoader for Dummy {
 }
 
 impl TriggerQueueWriter for Dummy {
-    type Error = Error;
+    type Error = Infallible;
 
     fn push_trigger(&self, _trigger: Trigger) -> Result<(), Self::Error> {
         Ok(())

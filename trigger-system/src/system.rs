@@ -1,4 +1,4 @@
-use anyhow::{Context, Result, Error};
+use anyhow::{Context, Error, Result};
 
 use toolkit::thread::StoppableThread;
 
@@ -24,7 +24,10 @@ impl TriggerSystem {
 
         let sys = Self {
             handle: StoppableThread::spawn(move |stop_rx| {
-                TriggerManager::new(stop_rx, cfg_loader, queue_writer).start()
+                match TriggerManager::new(stop_rx, cfg_loader, queue_writer) {
+                    Ok(mut man) => man.start(),
+                    Err(e) => log::error!("failed to start manager: {:?}", e),
+                }
             }),
         };
 
