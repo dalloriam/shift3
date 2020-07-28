@@ -120,7 +120,7 @@ mod tests {
     #[test]
     fn test_spawn_result() {
         let mut handle = StoppableThread::spawn(do_something_and_count);
-        thread::sleep(time::Duration::from_millis(150));
+        thread::sleep(time::Duration::from_millis(160));
         let r = handle.join().unwrap();
         assert!(r >= 15);
     }
