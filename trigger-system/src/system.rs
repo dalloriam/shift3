@@ -37,13 +37,13 @@ impl TriggerSystem {
     }
 
     pub fn stop(mut self) -> Result<()> {
-        log::debug!("received request to stop");
+        log::info!("received request to stop");
 
         self.handle
             .join()
             .context("Failed to stop trigger manager")?;
 
-        log::debug!("stop complete");
+        log::info!("stop complete");
 
         Ok(())
     }

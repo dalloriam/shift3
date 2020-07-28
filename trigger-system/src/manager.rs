@@ -58,7 +58,7 @@ where
     }
 
     fn check_all_triggers(&mut self) -> Result<()> {
-        log::info!("begin checking all triggers");
+        log::debug!("begin checking all triggers");
 
         // TODO: Don't fetch every configs every 100ms... :)
         for config in self.cfg_loader.get_all_configurations()? {
