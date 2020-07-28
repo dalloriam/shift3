@@ -25,8 +25,8 @@ fn wait_until_ctrlc() -> Result<()> {
 
 fn run_system() -> Result<()> {
     let sys = TriggerSystem::start(
-        disk::DiskConfigLoader::new("configs.json"),
-        disk::DiskQueueWriter::new("queue"),
+        disk::DiskConfigLoader::new("tmp/configs.json"),
+        disk::DiskQueueWriter::new("tmp/queue"),
     );
 
     wait_until_ctrlc()?;
