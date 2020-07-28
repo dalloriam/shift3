@@ -1,3 +1,4 @@
+use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
@@ -21,9 +22,9 @@ impl TriggerConfigLoader for DiskConfigLoader {
     type Error = io::Error;
 
     fn get_all_configurations(&self) -> Result<Vec<TriggerConfiguration>, Self::Error> {
-        log::debug!("got all configs");
-        // TODO: Implement.
-        Ok(Vec::new())
+        let data = fs::read_to_string(&self.path)?;
+        let configs: Vec<TriggerConfiguration> = serde_json::from_str(&data)?;
+        Ok(configs)
     }
 }
 

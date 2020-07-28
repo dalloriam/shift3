@@ -51,7 +51,7 @@ where
         );
 
         // unwrap is safe because of ensure()
-        for trigger in executor_maybe.unwrap().execute(&cfg.data)? {
+        for trigger in executor_maybe.unwrap().execute(&cfg)? {
             self.queue_writer.push_trigger(trigger)?;
         }
         Ok(())

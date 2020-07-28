@@ -4,8 +4,10 @@ use anyhow::Result;
 
 use protocol::{Trigger, TriggerConfiguration};
 
+use crate::builtins;
+
 pub trait TriggerExecutor {
-    fn execute(&mut self, payload: &str) -> Result<Vec<Trigger>>;
+    fn execute(&mut self, payload: &TriggerConfiguration) -> Result<Vec<Trigger>>;
 }
 
 pub type ExecutorObj = Box<dyn TriggerExecutor>;
@@ -26,7 +28,12 @@ impl From<String> for TriggerType {
 
 pub fn load_executors() -> Result<HashMap<String, ExecutorObj>> {
     // TODO: Use config here instead of hardcoding.
-    let mut executors = HashMap::new();
+    let mut executors: HashMap<String, Box<dyn TriggerExecutor>> = HashMap::new();
+
+    executors.insert(
+        String::from("directory_watch"),
+        Box::from(builtins::DirectoryWatchTrigger::new()),
+    );
 
     Ok(executors)
 }

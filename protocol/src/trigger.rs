@@ -14,7 +14,7 @@ pub struct TriggerConfiguration {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Trigger {
-    rule: RuleID,
-    trigger_type: String,
-    data: Vec<u8>,
+    pub rule: RuleID,
+    pub trigger_type: String,
+    pub data: String, // Again, JSON-encoded for now.
 }
