@@ -9,6 +9,7 @@ edition = "2018"
 [dependencies]
 anyhow = "1.0"
 log = "0.4"
+gcloud = {path = "../gcloud"}
 protocol = {path = "../protocol"}
 serde = {version = "1.0", features = ["derive"]}
 serde_json = "1.0"
