@@ -1,34 +1,44 @@
-use gcloud::{
-    datastore::{DatastoreClient, DatastoreEntity},
-    AuthProvider,
-};
+mod disk;
 
-const SK_PATH: &str = "/home/wduss/.google/dalloriam-dev.json";
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
-#[derive(Debug, DatastoreEntity)]
-struct Person {
-    name: String,
-    age: i32,
+use anyhow::Result;
+
+use trigger_system::TriggerSystem;
+
+fn init_logger() {
+    env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
+}
+
+fn wait_until_ctrlc() -> Result<()> {
+    let running = Arc::new(AtomicBool::new(true));
+    let r = running.clone();
+    ctrlc::set_handler(move || {
+        r.store(false, Ordering::SeqCst);
+    })?;
+
+    while running.load(Ordering::SeqCst) {}
+
+    Ok(())
+}
+
+fn run_system() -> Result<()> {
+    let sys = TriggerSystem::start(
+        disk::DiskConfigLoader::new("tmp/configs.json"),
+        disk::DiskQueueWriter::new("tmp/queue"),
+    );
+
+    wait_until_ctrlc()?;
+
+    sys.stop()?;
+
+    Ok(())
 }
 
 fn main() {
-    let auth = AuthProvider::from_json_file(SK_PATH).unwrap();
-    let mut client = DatastoreClient::new(String::from("shift3-dev"), auth);
-
-    let p = Person {
-        name: String::from("John Smith"),
-        age: 22,
-    };
-
-    let b = Person {
-        name: String::from("Jane Doe"),
-        age: 22,
-    };
-
-    client.insert(p).unwrap();
-    client.insert(b).unwrap();
-    client.commit().unwrap();
-
-    let persons = client.get_all::<Person>().unwrap();
-    println!("{:?}", persons);
+    init_logger();
+    if let Err(e) = run_system() {
+        log::error!("Fatal: {}", e);
+    }
 }
