@@ -64,10 +64,8 @@ impl<T> Drop for StoppableThread<T> {
     fn drop(&mut self) {
         if self.join_handle.is_some() {
             let handle = self.join_handle.take().unwrap(); // safe because of if
-            if self.tx_stop.send(()).is_ok() {
-                if !handle.join().is_ok() {
-                    log::error!("Join error");
-                }
+            if self.tx_stop.send(()).is_ok() && handle.join().is_err() {
+                log::error!("Join error");
             }
         }
     }

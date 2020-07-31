@@ -3,31 +3,9 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use protocol::{Trigger, TriggerConfiguration};
+use protocol::Trigger;
 
-use trigger_system::{TriggerConfigLoader, TriggerQueueWriter};
-
-pub struct DiskConfigLoader {
-    path: PathBuf,
-}
-
-impl DiskConfigLoader {
-    pub fn new<P: AsRef<Path>>(path: P) -> DiskConfigLoader {
-        DiskConfigLoader {
-            path: PathBuf::from(path.as_ref()),
-        }
-    }
-}
-
-impl TriggerConfigLoader for DiskConfigLoader {
-    type Error = io::Error;
-
-    fn get_all_configurations(&self) -> Result<Vec<TriggerConfiguration>, Self::Error> {
-        let data = fs::read_to_string(&self.path)?;
-        let configs: Vec<TriggerConfiguration> = serde_json::from_str(&data)?;
-        Ok(configs)
-    }
-}
+use trigger_system::TriggerQueueWriter;
 
 pub struct DiskQueueWriter {
     path: PathBuf,
