@@ -2,6 +2,7 @@
 members = [
     "action-executor",
     "gcloud",
+    "interpreter-svc",
     "trigger-interpreter",
     "trigger-system",
     "trigger-svc",
