@@ -1,0 +1,2 @@
+ignore:
+  - "trigger-system/src/iface_impl/**"
