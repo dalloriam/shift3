@@ -1,5 +1,3 @@
-mod disk;
-
 use std::env;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;

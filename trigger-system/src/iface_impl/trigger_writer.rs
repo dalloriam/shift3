@@ -1,4 +1,8 @@
 use std::fmt;
+use std::fs;
+use std::io;
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use gcloud::{
     pub_sub::{PubSubClient, PubSubError},
@@ -45,6 +49,25 @@ impl TriggerQueueWriter for PubsubTriggerQueueWriter {
 
     fn push_trigger(&self, trigger: Trigger) -> Result<(), Self::Error> {
         self.client.publish(trigger, &self.topic)?;
+        Ok(())
+    }
+}
+
+/// Writes triggers to a directory.
+pub struct DirectoryTriggerQueueWriter {
+    counter: AtomicU64,
+    path: PathBuf,
+}
+
+impl TriggerQueueWriter for DirectoryTriggerQueueWriter {
+    type Error = io::Error;
+
+    fn push_trigger(&self, trigger: Trigger) -> Result<(), Self::Error> {
+        let value = self.counter.fetch_add(1, Ordering::SeqCst);
+        let path = self.path.join(format!("trigger_{}.txt", value));
+
+        let file_handle = fs::File::create(path)?;
+        serde_json::to_writer(file_handle, &trigger)?;
         Ok(())
     }
 }
