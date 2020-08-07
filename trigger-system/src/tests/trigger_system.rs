@@ -9,14 +9,17 @@ use serde_json::json;
 
 use tempdir::TempDir;
 
+use crate::interface::TriggerQueueWriter;
 use crate::system::TriggerSystem;
 
 use super::mock;
 
 #[test]
 fn basic_test() {
-    let sys =
-        TriggerSystem::start::<mock::Dummy, mock::Dummy>(Default::default(), Default::default());
+    let sys = TriggerSystem::start(
+        Box::from(mock::Dummy::default()),
+        Box::new(mock::Dummy::default()),
+    );
     sys.stop().unwrap();
 }
 
@@ -33,7 +36,8 @@ fn in_memory_full_loop() {
     };
 
     let cfg_loader = mock::InMemoryConfigLoader::new(vec![trigger_config]);
-    let queue_writer = Arc::new(Mutex::new(mock::InMemoryQueueWriter::new()));
+    let queue_writer: Arc<Mutex<Box<dyn TriggerQueueWriter>>> =
+        Arc::new(Mutex::new(Box::new(mock::InMemoryQueueWriter::new())));
 
     let system = TriggerSystem::start(cfg_loader, queue_writer.clone());
 

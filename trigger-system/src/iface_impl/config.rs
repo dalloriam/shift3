@@ -1,26 +1,11 @@
-use std::fmt;
 use std::fs;
-use std::io;
 use std::path::{Path, PathBuf};
+
+use anyhow::Error;
 
 use gcloud::{datastore::DatastoreClient, AuthProvider};
 
 use crate::interface::{TriggerConfigLoader, TriggerConfiguration};
-
-#[derive(Debug)]
-pub enum Error {
-    DatastoreError(String),
-    SerializationError(serde_json::Error),
-    IOError(io::Error),
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl std::error::Error for Error {}
 
 pub struct DatastoreTriggerConfigLoader {
     client: DatastoreClient,
@@ -35,14 +20,9 @@ impl DatastoreTriggerConfigLoader {
 }
 
 impl TriggerConfigLoader for DatastoreTriggerConfigLoader {
-    type Error = Error;
-
-    fn get_all_configurations(&self) -> Result<Vec<TriggerConfiguration>, Self::Error> {
-        let results = self
-            .client
-            .get_all()
-            .map_err(|ds| Error::DatastoreError(format!("{:?}", ds)))?;
-        Ok(results)
+    fn get_all_configurations(&self) -> Result<Vec<TriggerConfiguration>, Error> {
+        let configs = self.client.get_all()?;
+        Ok(configs)
     }
 }
 
@@ -51,14 +31,18 @@ pub struct FileTriggerConfigLoader {
     path: PathBuf,
 }
 
+impl FileTriggerConfigLoader {
+    pub fn new<P: AsRef<Path>>(path: P) -> Self {
+        FileTriggerConfigLoader {
+            path: PathBuf::from(path.as_ref()),
+        }
+    }
+}
+
 impl TriggerConfigLoader for FileTriggerConfigLoader {
-    type Error = Error;
-
-    fn get_all_configurations(&self) -> Result<Vec<TriggerConfiguration>, Self::Error> {
-        let handle = fs::File::open(&self.path).map_err(Error::IOError)?;
-        let value: Vec<TriggerConfiguration> =
-            serde_json::from_reader(handle).map_err(Error::SerializationError)?;
-
+    fn get_all_configurations(&self) -> Result<Vec<TriggerConfiguration>, Error> {
+        let handle = fs::File::open(&self.path)?;
+        let value: Vec<TriggerConfiguration> = serde_json::from_reader(handle)?;
         Ok(value)
     }
 }

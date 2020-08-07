@@ -4,7 +4,7 @@ members = [
     "gcloud",
     "trigger-interpreter",
     "trigger-system",
-    "trigger-svc",
+    "process",
     "protocol",
     "toolkit"
 ]

@@ -1,5 +1,6 @@
-use std::convert::Infallible;
 use std::sync::{Arc, Mutex};
+
+use anyhow::Error;
 
 use crate::interface::{Trigger, TriggerConfigLoader, TriggerConfiguration, TriggerQueueWriter};
 
@@ -12,17 +13,13 @@ impl Default for Dummy {
 }
 
 impl TriggerConfigLoader for Dummy {
-    type Error = Infallible;
-
-    fn get_all_configurations(&self) -> Result<Vec<TriggerConfiguration>, Self::Error> {
+    fn get_all_configurations(&self) -> Result<Vec<TriggerConfiguration>, Error> {
         Ok(Vec::new())
     }
 }
 
 impl TriggerQueueWriter for Dummy {
-    type Error = Infallible;
-
-    fn push_trigger(&self, _trigger: Trigger) -> Result<(), Self::Error> {
+    fn push_trigger(&self, _trigger: Trigger) -> Result<(), Error> {
         Ok(())
     }
 }
@@ -38,9 +35,7 @@ impl InMemoryConfigLoader {
 }
 
 impl TriggerConfigLoader for InMemoryConfigLoader {
-    type Error = Infallible;
-
-    fn get_all_configurations(&self) -> Result<Vec<TriggerConfiguration>, Self::Error> {
+    fn get_all_configurations(&self) -> Result<Vec<TriggerConfiguration>, Error> {
         Ok(self.configs.clone())
     }
 }
@@ -55,12 +50,10 @@ impl InMemoryQueueWriter {
     }
 }
 
-type MultiThreadQueueWriter = Arc<Mutex<InMemoryQueueWriter>>;
+type MultiThreadQueueWriter = Arc<Mutex<Box<InMemoryQueueWriter>>>;
 
 impl TriggerQueueWriter for MultiThreadQueueWriter {
-    type Error = Infallible;
-
-    fn push_trigger(&self, trigger: Trigger) -> Result<(), Self::Error> {
+    fn push_trigger(&self, trigger: Trigger) -> Result<(), Error> {
         let mut guard = self.lock().unwrap(); // We won't get poisoning in a simple test.
         let queue_handle = &mut *guard;
         queue_handle.queue.push(trigger);

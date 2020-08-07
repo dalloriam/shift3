@@ -2,8 +2,8 @@ use anyhow::{Context, Result};
 
 use toolkit::thread::StoppableThread;
 
-use crate::interface::{TriggerConfigLoader, TriggerQueueWriter};
 use crate::manager::TriggerManager;
+use crate::{BoxedCfgLoader, BoxedQueueWriter};
 
 /// The trigger system manages the operation of the trigger service.
 /// It manages its own threads and resources.
@@ -13,13 +13,7 @@ pub struct TriggerSystem {
 
 impl TriggerSystem {
     /// Creates a new trigger system.
-    pub fn start<
-        T: 'static + TriggerConfigLoader + Send,
-        Q: 'static + TriggerQueueWriter + Send,
-    >(
-        cfg_loader: T,
-        queue_writer: Q,
-    ) -> Self {
+    pub fn start(cfg_loader: BoxedCfgLoader, queue_writer: BoxedQueueWriter) -> Self {
         log::debug!("starting system");
 
         let sys = Self {

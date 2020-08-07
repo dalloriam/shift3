@@ -1,34 +1,12 @@
-use std::fmt;
 use std::fs;
-use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use gcloud::{
-    pub_sub::{PubSubClient, PubSubError},
-    AuthProvider,
-};
+use anyhow::Error;
+
+use gcloud::{pub_sub::PubSubClient, AuthProvider};
 
 use crate::interface::{Trigger, TriggerQueueWriter};
-
-#[derive(Debug)]
-pub enum Error {
-    PubSubError(String),
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl std::error::Error for Error {}
-
-impl From<PubSubError> for Error {
-    fn from(e: PubSubError) -> Self {
-        Error::PubSubError(format!("{}", e))
-    }
-}
 
 pub struct PubsubTriggerQueueWriter {
     client: PubSubClient,
@@ -45,9 +23,7 @@ impl PubsubTriggerQueueWriter {
 }
 
 impl TriggerQueueWriter for PubsubTriggerQueueWriter {
-    type Error = Error;
-
-    fn push_trigger(&self, trigger: Trigger) -> Result<(), Self::Error> {
+    fn push_trigger(&self, trigger: Trigger) -> Result<(), Error> {
         self.client.publish(trigger, &self.topic)?;
         Ok(())
     }
@@ -59,10 +35,17 @@ pub struct DirectoryTriggerQueueWriter {
     path: PathBuf,
 }
 
-impl TriggerQueueWriter for DirectoryTriggerQueueWriter {
-    type Error = io::Error;
+impl DirectoryTriggerQueueWriter {
+    pub fn new<P: AsRef<Path>>(path: P) -> Self {
+        Self {
+            counter: AtomicU64::new(0),
+            path: PathBuf::from(path.as_ref()),
+        }
+    }
+}
 
-    fn push_trigger(&self, trigger: Trigger) -> Result<(), Self::Error> {
+impl TriggerQueueWriter for DirectoryTriggerQueueWriter {
+    fn push_trigger(&self, trigger: Trigger) -> Result<(), Error> {
         let value = self.counter.fetch_add(1, Ordering::SeqCst);
         let path = self.path.join(format!("trigger_{}.txt", value));
 

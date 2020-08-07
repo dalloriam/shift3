@@ -31,8 +31,8 @@ impl fmt::Display for CommitMode {
 
 #[derive(Debug, Snafu)]
 pub enum DatastoreError {
-    InsertFailed { source: GoogleDsError },
-    QueryFailed { source: GoogleDsError },
+    InsertFailed { message: String },
+    QueryFailed { message: String },
     BadEntity { source: EntityConversionError },
     IncompleteData,
 }
@@ -102,7 +102,9 @@ impl DatastoreClient {
             .projects()
             .commit(request, &self.project_id)
             .doit()
-            .context(InsertFailed)?;
+            .map_err(|e| DatastoreError::InsertFailed {
+                message: e.to_string(),
+            })?;
 
         Ok(())
     }
@@ -164,7 +166,9 @@ impl DatastoreClient {
                 &self.project_id,
             )
             .doit()
-            .context(QueryFailed)?;
+            .map_err(|e| DatastoreError::QueryFailed {
+                message: e.to_string(),
+            })?;
 
         let batch = r.batch.ok_or(DatastoreError::IncompleteData)?;
         let entities = batch.entity_results.ok_or(DatastoreError::IncompleteData)?;
