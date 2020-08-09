@@ -50,7 +50,7 @@ impl InMemoryQueueWriter {
     }
 }
 
-type MultiThreadQueueWriter = Arc<Mutex<Box<InMemoryQueueWriter>>>;
+type MultiThreadQueueWriter = Arc<Mutex<InMemoryQueueWriter>>;
 
 impl TriggerQueueWriter for MultiThreadQueueWriter {
     fn push_trigger(&self, trigger: Trigger) -> Result<(), Error> {

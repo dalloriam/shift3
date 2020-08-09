@@ -1,14 +1,26 @@
 mod trigger;
 
+use anyhow::Result;
+
 use serde::{Deserialize, Serialize};
+
+use crate::Service;
 
 #[derive(Deserialize, Serialize)]
 pub struct Configuration {
-    systems: Vec<SystemConfiguration>,
+    pub systems: Vec<SystemConfiguration>,
 }
 
 #[derive(Deserialize, Serialize)]
-#[serde(untagged)]
+#[serde(tag = "type")]
 pub enum SystemConfiguration {
-    TriggerSystem(trigger::TriggerSystemConfiguration),
+    Trigger(trigger::TriggerSystemConfiguration),
+}
+
+impl SystemConfiguration {
+    pub fn into_instance(self) -> Result<Service> {
+        match self {
+            SystemConfiguration::Trigger(cfg) => cfg.into_instance(),
+        }
+    }
 }

@@ -1,19 +1,14 @@
-mod process;
-
-use std::env;
+use std::convert::TryFrom;
+use std::fs;
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Result};
 
-use gcloud::AuthProvider;
+use clap::Clap;
 
-use trigger_system::iface_impl::{DatastoreTriggerConfigLoader, PubsubTriggerQueueWriter};
-use trigger_system::TriggerSystem;
-
-const GCLOUD_KEY_FILE_ENV: &str = "GOOGLE_APPLICATION_CREDENTIALS";
-const GCLOUD_PROJECT_ID_ENV: &str = "GOOGLE_PROJECT_ID";
-const GCLOUD_QUEUE_TOPIC_ENV: &str = "PUBSUB_TRIGGER_TOPIC";
+use process::Node;
 
 fn init_logger() {
     env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
@@ -31,59 +26,90 @@ fn wait_until_ctrlc() -> Result<()> {
     Ok(())
 }
 
-fn get_config_loader() -> Result<DatastoreTriggerConfigLoader> {
-    let gcloud_credentials_path = env::var(GCLOUD_KEY_FILE_ENV).context(format!(
-        "Missing key file. Please set '{}'.",
-        GCLOUD_KEY_FILE_ENV
-    ))?;
+fn main_loop(config_file_path: &PathBuf) -> Result<()> {
+    let cfg_format = polyglot::Format::try_from(
+        config_file_path
+            .extension()
+            .ok_or_else(|| anyhow!("Missing extension"))?
+            .to_string_lossy()
+            .as_ref(),
+    )?;
 
-    let gcloud_project_id = env::var(GCLOUD_PROJECT_ID_ENV).context(format!(
-        "Missing project ID. Please set '{}'",
-        GCLOUD_PROJECT_ID_ENV
-    ))?;
-
-    Ok(DatastoreTriggerConfigLoader::new(
-        gcloud_project_id,
-        AuthProvider::from_json_file(gcloud_credentials_path)?,
-    ))
-}
-
-fn get_queue_writer() -> Result<PubsubTriggerQueueWriter> {
-    let gcloud_credentials_path = env::var(GCLOUD_KEY_FILE_ENV).context(format!(
-        "Missing key file. Please set '{}'.",
-        GCLOUD_KEY_FILE_ENV
-    ))?;
-
-    let gcloud_project_id = env::var(GCLOUD_PROJECT_ID_ENV).context(format!(
-        "Missing project ID. Please set '{}'",
-        GCLOUD_PROJECT_ID_ENV
-    ))?;
-
-    let topic = env::var(GCLOUD_QUEUE_TOPIC_ENV).context(format!(
-        "Missing topic, please set '{}'",
-        GCLOUD_QUEUE_TOPIC_ENV
-    ))?;
-
-    Ok(PubsubTriggerQueueWriter::new(
-        gcloud_project_id,
-        AuthProvider::from_json_file(gcloud_credentials_path)?,
-        topic,
-    ))
-}
-
-fn run_system() -> Result<()> {
-    let sys = TriggerSystem::start(get_config_loader()?, get_queue_writer()?);
+    let cfg_handle = fs::File::open(config_file_path)?;
+    let node = Node::start(polyglot::from_reader(cfg_handle, cfg_format)?)?;
 
     wait_until_ctrlc()?;
 
-    sys.stop()?;
+    node.stop()
+}
 
-    Ok(())
+#[derive(Clap, Debug)]
+#[clap(
+    version = "0.1.0",
+    author = "William Dussault",
+    author = "Laurent Leclerc-Poulin"
+)]
+pub struct CLIMain {
+    /// Path to the node configuration file.
+    #[clap(short = "c", long = "cfg")]
+    cfg: PathBuf,
+}
+
+impl CLIMain {
+    pub fn run(self) -> Result<()> {
+        main_loop(&self.cfg)
+    }
 }
 
 fn main() {
     init_logger();
-    if let Err(e) = run_system() {
+
+    let cli = CLIMain::parse();
+    if let Err(e) = cli.run() {
         log::error!("Fatal: {}", e);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+    use std::io::Write;
+
+    use serde_json::json;
+
+    use tempdir::TempDir;
+
+    fn run_test(config_body: &str, config_extension: &str) {
+        let test_dir = TempDir::new("").unwrap();
+
+        let cfg_path = test_dir
+            .path()
+            .join("config")
+            .with_extension(config_extension);
+
+        // Create the config file for the process.
+        {
+            let mut cfg_handle = fs::File::create(&cfg_path).unwrap();
+            write!(cfg_handle, "{}", config_body).unwrap();
+        }
+
+        // Create the queue directory.
+        fs::create_dir(test_dir.path().join("queue")).unwrap();
+
+        // Create the trigger config json file.
+        let trigger_config = json!({
+            "id": 1,
+            "rule": 42,
+            "trigger_type": "directory_watch",
+            "data": "{\"directory\": \"watch\"}"
+        });
+
+        // TODO: Figure out way to start subprocess & kill it. If not possible, use python tests instead.
+    }
+
+    #[test]
+    fn json_cfg_initialization() {
+        let cfg = include_str!("./test_data/config.json");
+        run_test(cfg, "json");
     }
 }

@@ -1,6 +1,6 @@
-use anyhow::{Context, Result};
+use anyhow::{Context, Error, Result};
 
-use toolkit::thread::StoppableThread;
+use toolkit::{thread::StoppableThread, Stop};
 
 use crate::manager::TriggerManager;
 use crate::{BoxedCfgLoader, BoxedQueueWriter};
@@ -30,7 +30,9 @@ impl TriggerSystem {
         sys
     }
 
-    pub fn stop(mut self) -> Result<()> {
+    /// Called by Stop. Used to enable terminating
+    /// the system without boxing it first.
+    pub fn terminate(mut self) -> Result<()> {
         log::info!("received request to stop");
 
         self.handle
@@ -40,5 +42,13 @@ impl TriggerSystem {
         log::info!("stop complete");
 
         Ok(())
+    }
+}
+
+impl Stop for TriggerSystem {
+    type Error = Error;
+
+    fn stop(self: Box<Self>) -> Result<()> {
+        self.terminate()
     }
 }

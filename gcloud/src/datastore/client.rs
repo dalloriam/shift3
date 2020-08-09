@@ -3,8 +3,7 @@ use std::fmt;
 use std::mem;
 
 use google_datastore1::{
-    CommitRequest, Datastore, Error as GoogleDsError, KindExpression, Mutation, Query,
-    RunQueryRequest,
+    CommitRequest, Datastore, KindExpression, Mutation, Query, RunQueryRequest,
 };
 
 use hyper::Client;
@@ -188,7 +187,7 @@ impl Drop for DatastoreClient {
     fn drop(&mut self) {
         // Validate that nothing is in the tx buffer.
         if !self.mutation_buffer.is_empty() {
-            eprintln!("Warning: Transaction buffer not empty"); // TODO: Replace with `log` library.
+            log::error!("transaction buffer not empty")
         }
     }
 }

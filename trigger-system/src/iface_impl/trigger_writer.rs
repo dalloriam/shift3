@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use anyhow::Error;
+use anyhow::{ensure, Result};
 
 use gcloud::{pub_sub::PubSubClient, AuthProvider};
 
@@ -20,10 +20,23 @@ impl PubsubTriggerQueueWriter {
             topic,
         }
     }
+
+    pub fn from_credentials<P: AsRef<Path>>(
+        project_id: String,
+        credentials_file_path: P,
+        topic: String,
+    ) -> Result<Self> {
+        let authenticator = AuthProvider::from_json_file(credentials_file_path)?;
+        Ok(PubsubTriggerQueueWriter::new(
+            project_id,
+            authenticator,
+            topic,
+        ))
+    }
 }
 
 impl TriggerQueueWriter for PubsubTriggerQueueWriter {
-    fn push_trigger(&self, trigger: Trigger) -> Result<(), Error> {
+    fn push_trigger(&self, trigger: Trigger) -> Result<()> {
         self.client.publish(trigger, &self.topic)?;
         Ok(())
     }
@@ -36,16 +49,21 @@ pub struct DirectoryTriggerQueueWriter {
 }
 
 impl DirectoryTriggerQueueWriter {
-    pub fn new<P: AsRef<Path>>(path: P) -> Self {
-        Self {
+    pub fn new<P: AsRef<Path>>(path: P) -> Result<Self> {
+        ensure!(
+            path.as_ref().exists(),
+            format!("{:?} does not exist", path.as_ref())
+        );
+
+        Ok(Self {
             counter: AtomicU64::new(0),
             path: PathBuf::from(path.as_ref()),
-        }
+        })
     }
 }
 
 impl TriggerQueueWriter for DirectoryTriggerQueueWriter {
-    fn push_trigger(&self, trigger: Trigger) -> Result<(), Error> {
+    fn push_trigger(&self, trigger: Trigger) -> Result<()> {
         let value = self.counter.fetch_add(1, Ordering::SeqCst);
         let path = self.path.join(format!("trigger_{}.txt", value));
 

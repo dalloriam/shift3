@@ -1,0 +1,15 @@
+{
+    "systems": [
+        {
+            "type": "Trigger",
+            "config_reader": {
+                "type": "File",
+                "path": "./triggerconfig.json"
+            },
+            "queue_writer": {
+                "type": "Directory",
+                "path": "./queue"
+            }
+        }
+    ]
+}
