@@ -8,7 +8,7 @@ type ActionData = HashMap<String, Variant>;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ActionManifest {
-    rule: RuleID,
-    action_type: String,
-    data: ActionData,
+    pub rule: RuleID,
+    pub action_type: String,
+    pub data: ActionData,
 }

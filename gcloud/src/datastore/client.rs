@@ -11,8 +11,6 @@ use hyper::Client;
 
 use snafu::{ResultExt, Snafu};
 
-use protocol::{Rule, RuleID};
-
 use crate::{
     datastore::{DSEntity, DatastoreEntity, EntityConversionError},
     https, AuthProvider,
@@ -182,7 +180,7 @@ impl DatastoreClient {
     }
 
     /// Get a rule by its id.
-    pub fn get(&self, id: RuleID) -> Result<Rule> {
+    pub fn get<T>(&self, id: u64) -> Result<T> {
         // TODO: Implement this!
         unimplemented!()
     }

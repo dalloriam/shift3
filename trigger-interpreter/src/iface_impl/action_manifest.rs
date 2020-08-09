@@ -20,12 +20,14 @@ impl std::error::Error for Error {}
 
 pub struct PubSubActionManifestWriter {
     client: PubSubClient,
+    topic_id: String,
 }
 
 impl PubSubActionManifestWriter {
-    pub fn new(project_id: String, authenticator: AuthProvider) -> Self {
+    pub fn new(project_id: String, authenticator: AuthProvider, topic_id: String) -> Self {
         Self {
             client: PubSubClient::new(project_id, authenticator),
+            topic_id,
         }
     }
 }
@@ -36,7 +38,7 @@ impl ActionManifestQueueWriter for PubSubActionManifestWriter {
     fn push_action_manifest(&self, manifest: ActionManifest) -> Result<(), Self::Error> {
         let result = self
             .client
-            .publish(manifest, "subscription")
+            .publish(manifest, self.topic_id.as_str())
             .map_err(|ds| Error::PubSubError(format!("{:?}", ds)))?;
 
         Ok(result)

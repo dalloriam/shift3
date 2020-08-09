@@ -20,12 +20,14 @@ impl std::error::Error for Error {}
 
 pub struct PubSubTriggerReader {
     client: PubSubClient,
+    subscription_id: String,
 }
 
 impl PubSubTriggerReader {
-    pub fn new(project_id: String, authenticator: AuthProvider) -> Self {
+    pub fn new(project_id: String, authenticator: AuthProvider, subscription_id: String) -> Self {
         Self {
             client: PubSubClient::new(project_id, authenticator),
+            subscription_id,
         }
     }
 }
@@ -36,7 +38,7 @@ impl TriggerQueueReader for PubSubTriggerReader {
     fn pull_trigger(&self) -> Result<Trigger, Self::Error> {
         let result = self
             .client
-            .pull("subscription")
+            .pull(self.subscription_id.as_str())
             .map_err(|ds| Error::PubSubError(format!("{:?}", ds)))?;
 
         Ok(result)

@@ -1,7 +1,7 @@
 use std::fmt;
 
 use gcloud::{datastore::DatastoreClient, AuthProvider};
-use protocol::{ActionConfiguration, Rule, RuleID};
+use protocol::{Rule, RuleID};
 
 use crate::interface::ActionConfigReader;
 
@@ -33,12 +33,12 @@ impl DatastoreActionConfigLoader {
 impl ActionConfigReader for DatastoreActionConfigLoader {
     type Error = Error;
 
-    fn get_action_config(&self, id: RuleID) -> Result<ActionConfiguration, Self::Error> {
+    fn get_rule(&self, id: RuleID) -> Result<Rule, Self::Error> {
         let result: Rule = self
             .client
             .get(id)
             .map_err(|ds| Error::DatastoreError(format!("{:?}", ds)))?;
 
-        Ok(result.action_config)
+        Ok(result)
     }
 }

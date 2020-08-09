@@ -9,3 +9,8 @@ edition = "2018"
 [dependencies]
 trigger-interpreter = {path = "../trigger-interpreter"}
 protocol = {path = "../protocol"}
+gcloud = {path = "../gcloud"}
+env_logger = "0.7"
+log = "0.4"
+anyhow = "1.0"
+ctrlc = "3.1"
