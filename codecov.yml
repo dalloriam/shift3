@@ -1,0 +1,3 @@
+ignore:
+  - "trigger-system/src/iface_impl/**"
+  - "**/main.rs"
