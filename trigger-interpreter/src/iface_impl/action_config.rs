@@ -34,11 +34,14 @@ impl ActionConfigReader for DatastoreActionConfigLoader {
     type Error = Error;
 
     fn get_rule(&self, id: RuleID) -> Result<Rule, Self::Error> {
-        let result: Rule = self
+        let result: Option<Rule> = self
             .client
             .get(id)
             .map_err(|ds| Error::DatastoreError(format!("{:?}", ds)))?;
 
-        Ok(result)
+        match result {
+            None => Err(Error::DatastoreError(String::from(""))), // TODO: Return a proper error
+            Some(r) => Ok(r),
+        }
     }
 }
