@@ -15,8 +15,8 @@ use trigger_system::{
 /// Configuration struct of the trigger system.
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct TriggerSystemConfiguration {
-    config_reader: ConfigReaderConfiguration,
-    queue_writer: QueueWriterConfiguration,
+    pub config_reader: ConfigReaderConfiguration,
+    pub queue_writer: QueueWriterConfiguration,
 }
 
 impl TriggerSystemConfiguration {
@@ -109,6 +109,12 @@ mod tests {
 
                     let deserialized: $t = serde_json::from_str(DATA_RAW).unwrap();
                     assert_eq!(deserialized, $eq_to);
+
+                    // We don't care about whether it failed.
+                    match deserialized.into_instance() {
+                        Ok(_) => {},
+                        Err(_) => {}
+                    }
                 }
             )*
         };

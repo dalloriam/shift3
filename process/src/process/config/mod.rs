@@ -24,3 +24,28 @@ impl SystemConfiguration {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use std::path::PathBuf;
+
+    use super::trigger::{
+        ConfigReaderConfiguration, QueueWriterConfiguration, TriggerSystemConfiguration,
+    };
+    use super::SystemConfiguration;
+
+    #[test]
+    fn test_into_instance() {
+        let cfg = SystemConfiguration::Trigger(TriggerSystemConfiguration {
+            config_reader: ConfigReaderConfiguration::File {
+                file: PathBuf::from("/var"),
+            },
+            queue_writer: QueueWriterConfiguration::Directory {
+                path: PathBuf::from("/var"),
+            },
+        });
+
+        cfg.into_instance().unwrap();
+    }
+}
