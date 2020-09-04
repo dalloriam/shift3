@@ -9,5 +9,8 @@ mod system;
 pub use interface::{TriggerConfigLoader, TriggerQueueWriter};
 pub use system::TriggerSystem;
 
+type BoxedCfgLoader = Box<dyn TriggerConfigLoader + Send>;
+type BoxedQueueWriter = Box<dyn TriggerQueueWriter + Send>;
+
 #[cfg(test)]
 mod tests;

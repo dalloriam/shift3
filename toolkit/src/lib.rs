@@ -2,4 +2,7 @@
 
 //! Generic utility library.
 
+mod stop;
 pub mod thread;
+
+pub use stop::Stop;

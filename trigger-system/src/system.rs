@@ -1,9 +1,9 @@
-use anyhow::{Context, Result};
+use anyhow::{Context, Error, Result};
 
-use toolkit::thread::StoppableThread;
+use toolkit::{thread::StoppableThread, Stop};
 
-use crate::interface::{TriggerConfigLoader, TriggerQueueWriter};
 use crate::manager::TriggerManager;
+use crate::{BoxedCfgLoader, BoxedQueueWriter};
 
 /// The trigger system manages the operation of the trigger service.
 /// It manages its own threads and resources.
@@ -13,13 +13,7 @@ pub struct TriggerSystem {
 
 impl TriggerSystem {
     /// Creates a new trigger system.
-    pub fn start<
-        T: 'static + TriggerConfigLoader + Send,
-        Q: 'static + TriggerQueueWriter + Send,
-    >(
-        cfg_loader: T,
-        queue_writer: Q,
-    ) -> Self {
+    pub fn start(cfg_loader: BoxedCfgLoader, queue_writer: BoxedQueueWriter) -> Self {
         log::debug!("starting system");
 
         let sys = Self {
@@ -36,7 +30,9 @@ impl TriggerSystem {
         sys
     }
 
-    pub fn stop(mut self) -> Result<()> {
+    /// Called by Stop. Used to enable terminating
+    /// the system without boxing it first.
+    pub fn terminate(mut self) -> Result<()> {
         log::info!("received request to stop");
 
         self.handle
@@ -46,5 +42,13 @@ impl TriggerSystem {
         log::info!("stop complete");
 
         Ok(())
+    }
+}
+
+impl Stop for TriggerSystem {
+    type Error = Error;
+
+    fn stop(self: Box<Self>) -> Result<()> {
+        self.terminate()
     }
 }
