@@ -7,7 +7,8 @@ use crate::manager::TriggerManager;
 use std::sync::{Arc, Mutex};
 use toolkit::thread::StoppableThread;
 
-/// TODO: Comment this!
+/// The trigger interpreter manages the operations of the trigger service.
+/// It manages its own threads and resources.
 pub struct TriggerInterpreter {
     handles: Vec<StoppableThread<()>>,
 }
@@ -15,7 +16,7 @@ pub struct TriggerInterpreter {
 impl TriggerInterpreter {
     /// Starts the trigger interpreter
     pub fn start<
-        R: 'static + TriggerQueueReader + Send,
+        R: 'static + TriggerQueueReader + Send + Clone,
         A: 'static + ActionConfigReader + Send,
         W: 'static + ActionManifestQueueWriter + Send,
     >(
@@ -29,14 +30,13 @@ impl TriggerInterpreter {
             handles: Vec::new(),
         };
 
-        let reader = Arc::new(Mutex::new(queue_reader));
         let config = Arc::new(Mutex::new(cfg_reader));
         let writer = Arc::new(Mutex::new(queue_writer));
 
         for _ in 0..9 {
-            let reader_copy = reader.clone();
             let config_copy = config.clone();
             let writer_copy = writer.clone();
+            let reader_copy = queue_reader.clone();
 
             interpreter.handles.push(StoppableThread::spawn(
                 move |stop_rx| match TriggerManager::new(
@@ -59,11 +59,11 @@ impl TriggerInterpreter {
     pub fn stop(mut self) -> Result<()> {
         log::info!("received request to stop");
 
-        //for handle in self.handles.iter_mut() {
-        //    handle
-        //       .join()
-        //        .context("Failed to stop one of the trigger managers")?;
-        //}
+        for handle in self.handles.iter_mut() {
+            handle
+                .join()
+                .context("Failed to stop one of the trigger managers")?;
+        }
 
         log::info!("stop complete");
 

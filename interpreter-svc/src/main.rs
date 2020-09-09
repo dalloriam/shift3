@@ -110,7 +110,6 @@ fn run() -> Result<()> {
     let project_id = project_id()?;
     let gcloud_credentials_path = gcloud_credentials_path()?;
 
-    // TODO: Create a trigger interpreter
     let interpreter = TriggerInterpreter::start(
         get_queue_reader(project_id.clone(), gcloud_credentials_path.clone())?,
         get_action_config_loader(project_id.clone(), gcloud_credentials_path.clone())?,
@@ -126,6 +125,7 @@ fn run() -> Result<()> {
 
 fn main() {
     init_logger();
+
     if let Err(e) = run() {
         log::error!("Fatal: {}", e);
     }

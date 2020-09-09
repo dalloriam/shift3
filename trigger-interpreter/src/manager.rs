@@ -1,7 +1,5 @@
-use std::sync::{mpsc, Arc, Mutex};
-use std::time;
-
 use anyhow::Result;
+use std::sync::{mpsc, Arc, Mutex};
 
 use protocol::{ActionManifest, Trigger};
 
@@ -10,16 +8,14 @@ use crate::{
     templating::render_template,
 };
 
-const EXIT_POLL_FREQUENCY: time::Duration = time::Duration::from_millis(100);
-
-/// TODO: Comment this!
+/// The interpreter manager is the "main" thread of the trigger interpreter.
 pub struct TriggerManager<R, A, W>
 where
     R: 'static + TriggerQueueReader,
     A: 'static + ActionConfigReader,
     W: 'static + ActionManifestQueueWriter,
 {
-    queue_reader: Arc<Mutex<R>>,
+    queue_reader: R,
     cfg_reader: Arc<Mutex<A>>,
     queue_writer: Arc<Mutex<W>>,
     stop_rx: mpsc::Receiver<()>,
@@ -27,13 +23,13 @@ where
 
 impl<R, A, W> TriggerManager<R, A, W>
 where
-    R: 'static + TriggerQueueReader + Send,
+    R: 'static + TriggerQueueReader + Send + Clone,
     A: 'static + ActionConfigReader + Send,
     W: 'static + ActionManifestQueueWriter + Send,
 {
     pub fn new(
         stop_rx: mpsc::Receiver<()>,
-        queue_reader: Arc<Mutex<R>>,
+        queue_reader: R,
         cfg_reader: Arc<Mutex<A>>,
         queue_writer: Arc<Mutex<W>>,
     ) -> Result<Self> {
@@ -71,20 +67,24 @@ where
     fn pull_trigger(&self) -> Result<()> {
         log::debug!("begin pulling trigger data");
 
-        let mut queue_reader_guard = self.queue_reader.lock().unwrap();
-        let queue_reader_ref = &mut (*queue_reader_guard);
-        let trigger = queue_reader_ref.pull_trigger()?;
+        loop {
+            let triggers = self.queue_reader.pull_trigger()?;
 
-        self.interpret_trigger(trigger)?;
+            for trigger in triggers {
+                self.interpret_trigger(trigger)?;
+            }
+
+            if self.stop_rx.try_recv().is_ok() {
+                break;
+            }
+        }
 
         Ok(())
     }
 
     pub fn start(&self) {
-        loop {
-            if let Err(e) = self.pull_trigger() {
-                log::error!("{:?}", e);
-            }
+        if let Err(e) = self.pull_trigger() {
+            log::error!("{:?}", e);
         }
     }
 }

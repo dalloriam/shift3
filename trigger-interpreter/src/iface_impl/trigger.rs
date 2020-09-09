@@ -21,13 +21,28 @@ impl std::error::Error for Error {}
 pub struct PubSubTriggerReader {
     client: PubSubClient,
     subscription_id: String,
+    project_id: String,
+    authenticator: AuthProvider,
+}
+
+impl Clone for PubSubTriggerReader {
+    fn clone(&self) -> Self {
+        PubSubTriggerReader {
+            client: PubSubClient::new(self.project_id.clone(), self.authenticator.clone()),
+            subscription_id: self.subscription_id.clone(),
+            project_id: self.project_id.clone(),
+            authenticator: self.authenticator.clone(),
+        }
+    }
 }
 
 impl PubSubTriggerReader {
     pub fn new(project_id: String, authenticator: AuthProvider, subscription_id: String) -> Self {
-        Self {
-            client: PubSubClient::new(project_id, authenticator),
+        PubSubTriggerReader {
+            client: PubSubClient::new(project_id.clone(), authenticator.clone()),
             subscription_id,
+            project_id,
+            authenticator,
         }
     }
 }
@@ -35,10 +50,10 @@ impl PubSubTriggerReader {
 impl TriggerQueueReader for PubSubTriggerReader {
     type Error = Error;
 
-    fn pull_trigger(&self) -> Result<Trigger, Self::Error> {
+    fn pull_trigger(&self) -> Result<Vec<Trigger>, Self::Error> {
         let result = self
             .client
-            .pull(self.subscription_id.as_str())
+            .pull(self.subscription_id.as_str(), 10) // TODO: Set proper batch size
             .map_err(|ds| Error::PubSubError(format!("{:?}", ds)))?;
 
         Ok(result)
