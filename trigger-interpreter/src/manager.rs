@@ -47,9 +47,14 @@ where
         // Get action configuration associated with the trigger's rule.
         let mut cfg_reader_guard = self.cfg_reader.lock().unwrap();
         let cfg_reader_ref = &mut (*cfg_reader_guard);
-        let rule = cfg_reader_ref.get_rule(trigger.rule)?;
 
+        log::debug!("fetching the rule ({}) by its id", trigger.rule);
+        let rule = cfg_reader_ref.get_rule(trigger.rule)?;
+        log::debug!("rule fetched {:?}", rule);
+
+        log::debug!("rendering the template from the action configuration");
         let action_config = render_template(rule.action_config, trigger.data)?;
+        log::debug!("template rendered: {:?}", action_config);
 
         let action_manifest = ActionManifest {
             rule: trigger.rule,
@@ -59,6 +64,8 @@ where
 
         let mut queue_writer_guard = self.queue_writer.lock().unwrap();
         let queue_writer_ref = &mut (*queue_writer_guard);
+
+        log::debug!("pushing the action manifest");
         queue_writer_ref.push_action_manifest(action_manifest)?;
 
         Ok(())
@@ -69,9 +76,17 @@ where
 
         loop {
             let triggers = self.queue_reader.pull_trigger()?;
+            log::debug!("number of messages pulled ({:?})", triggers.len());
 
-            for trigger in triggers {
+            for (id, trigger) in triggers {
                 self.interpret_trigger(trigger)?;
+
+                log::debug!("acknowledging the message ({})", id);
+
+                let mut ids = Vec::new();
+                ids.push(id);
+
+                self.queue_reader.acknowlege(ids)?;
             }
 
             if self.stop_rx.try_recv().is_ok() {

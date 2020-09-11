@@ -4,7 +4,9 @@ use protocol::{ActionManifest, Rule, RuleID, Trigger};
 pub trait TriggerQueueReader {
     type Error: std::error::Error + Send + Sync;
 
-    fn pull_trigger(&self) -> Result<Vec<Trigger>, Self::Error>;
+    fn pull_trigger(&self) -> Result<Vec<(String, Trigger)>, Self::Error>;
+
+    fn acknowlege(&self, ack_ids: Vec<String>) -> Result<(), Self::Error>;
 }
 
 /// Trait describing an object capable of pulling a trigger from a queue.

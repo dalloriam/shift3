@@ -198,7 +198,7 @@ impl DatastoreClient {
                             integer_value: Some(id.to_string()),
                             ..Default::default()
                         }),
-                        op: Some(String::from("=")),
+                        op: Some(String::from("EQUAL")),
                     }
                 }),
                 ..Default::default()

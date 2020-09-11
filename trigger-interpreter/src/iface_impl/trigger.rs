@@ -50,12 +50,20 @@ impl PubSubTriggerReader {
 impl TriggerQueueReader for PubSubTriggerReader {
     type Error = Error;
 
-    fn pull_trigger(&self) -> Result<Vec<Trigger>, Self::Error> {
+    fn pull_trigger(&self) -> Result<Vec<(String, Trigger)>, Self::Error> {
         let result = self
             .client
             .pull(self.subscription_id.as_str(), 10) // TODO: Set proper batch size
             .map_err(|ds| Error::PubSubError(format!("{:?}", ds)))?;
 
         Ok(result)
+    }
+
+    fn acknowlege(&self, ack_ids: Vec<String>) -> Result<(), Self::Error> {
+        self.client
+            .acknowledge(ack_ids, self.subscription_id.as_str())
+            .map_err(|ds| Error::PubSubError(format!("{:?}", ds)))?;
+
+        Ok(())
     }
 }

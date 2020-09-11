@@ -22,6 +22,9 @@ pub enum PubSubError {
     #[snafu(display("Failed to publish the topic : {}", source))]
     FailedToPublishTopic { source: google_pubsub1::Error },
 
+    #[snafu(display("Failed to acknowledge the message : {}", source))]
+    FailedToAcknowledgeMessage { source: google_pubsub1::Error },
+
     #[snafu(display("Failed to pull the subscription : {}", source))]
     FailedToPullSubscription { source: google_pubsub1::Error },
 
@@ -64,6 +67,7 @@ impl PubSubClient {
     ///
     /// The function allows to push a JSON serializable entity to a Pub/Sub topic.
     /// Therefore, the entity must implement serde's Serialize trait.
+    // TODO: TEST THIS!
     pub fn publish<Entity>(&self, data: Entity, topic: &str) -> Result<()>
     where
         Entity: Serialize,
@@ -91,11 +95,36 @@ impl PubSubClient {
         Ok(())
     }
 
+    /// Acknowledges the reception of a or multiple messages from a Pub/Sub subscription.
+    pub fn acknowledge(&self, ack_ids: Vec<String>, subscription: &str) -> Result<()> {
+        let acknowledge_request = google_pubsub1::AcknowledgeRequest {
+            ack_ids: Some(ack_ids),
+        };
+
+        self.pubsub_connection
+            .projects()
+            .subscriptions_acknowledge(
+                acknowledge_request,
+                &format!(
+                    "projects/{}/subscriptions/{}",
+                    self.project_id, subscription
+                ),
+            )
+            .doit()
+            .context(FailedToAcknowledgeMessage)?;
+
+        Ok(())
+    }
+
     /// Pulls a single entity from a Pub/Sub subscription.
     ///
     /// The function allows to pull a JSON deserializable entity from a Pub/Sub subscription.
     /// Therefore, the entity must implement serde's DeserializeOwned trait.
-    pub fn pull<Entity>(&self, subscription: &str, max_batch_size: i32) -> Result<Vec<Entity>>
+    pub fn pull<Entity>(
+        &self,
+        subscription: &str,
+        max_batch_size: i32,
+    ) -> Result<Vec<(String, Entity)>>
     where
         Entity: de::DeserializeOwned,
     {
@@ -118,7 +147,7 @@ impl PubSubClient {
             .context(FailedToPullSubscription)?;
 
         if let Some(received_messages) = pull_resp.received_messages {
-            let mut entities: Vec<Entity> = Vec::new();
+            let mut entities: Vec<(String, Entity)> = Vec::new();
 
             for received_message in received_messages {
                 let message = received_message
@@ -126,14 +155,16 @@ impl PubSubClient {
                     .as_ref()
                     .ok_or(PubSubError::EmptyResponse)?;
 
-                let data = message.data.as_ref().ok_or(PubSubError::EmptyResponse)?;
+                if let Some(id) = received_message.ack_id {
+                    let data = message.data.as_ref().ok_or(PubSubError::EmptyResponse)?;
 
-                let decoded = base64::decode(&data).context(FailedToDecodeDataStruct)?;
+                    let decoded = base64::decode(&data).context(FailedToDecodeDataStruct)?;
 
-                let entity: Entity =
-                    serde_json::from_slice(&decoded).context(FailedToDeserializeDataStruct)?;
+                    let entity: Entity =
+                        serde_json::from_slice(&decoded).context(FailedToDeserializeDataStruct)?;
 
-                entities.push(entity)
+                    entities.push((id, entity));
+                }
             }
 
             Ok(entities)
