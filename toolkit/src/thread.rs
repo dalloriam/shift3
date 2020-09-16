@@ -69,7 +69,7 @@ where
 
     /// Sends a stop signal to the thread, returns a join holding object.
     pub fn stop(self) -> Result<JoinHolder<T>> {
-        let handle = self.join_handle; // safe because of ensure.
+        let handle = self.join_handle;
 
         ensure!(self.tx_stop.send(()).is_ok(), ShutdownRequestError);
 
