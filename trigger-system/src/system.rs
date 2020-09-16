@@ -32,12 +32,14 @@ impl TriggerSystem {
 
     /// Called by Stop. Used to enable terminating
     /// the system without boxing it first.
-    pub fn terminate(mut self) -> Result<()> {
+    pub fn terminate(self) -> Result<()> {
         log::info!("received request to stop");
 
         self.handle
+            .stop()
+            .context("Failed to stop trigger manager")?
             .join()
-            .context("Failed to stop trigger manager")?;
+            .context("Failed to join trigger manager thread")?;
 
         log::info!("stop complete");
 
