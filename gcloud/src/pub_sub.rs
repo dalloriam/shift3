@@ -67,7 +67,6 @@ impl PubSubClient {
     ///
     /// The function allows to push a JSON serializable entity to a Pub/Sub topic.
     /// Therefore, the entity must implement serde's Serialize trait.
-    // TODO: TEST THIS!
     pub fn publish<Entity>(&self, data: Entity, topic: &str) -> Result<()>
     where
         Entity: Serialize,

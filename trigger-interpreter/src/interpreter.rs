@@ -59,7 +59,7 @@ impl TriggerInterpreter {
     pub fn stop(mut self) -> Result<()> {
         log::info!("received request to stop");
 
-        // TODO: Will throw failed to stop if the thread is already stopped?
+        // TODO: Handle possible errors sent by calling join
         for handle in self.handles.iter_mut() {
             handle
                 .join()

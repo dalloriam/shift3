@@ -40,7 +40,10 @@ impl ActionConfigReader for DatastoreActionConfigLoader {
             .map_err(|ds| Error::DatastoreError(format!("{:?}", ds)))?;
 
         match result {
-            None => Err(Error::DatastoreError(String::from(""))), // TODO: Return a proper error
+            None => Err(Error::DatastoreError(format!(
+                "Rule with id '{}' not found.",
+                id
+            ))),
             Some(r) => Ok(r),
         }
     }

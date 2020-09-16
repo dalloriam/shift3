@@ -53,7 +53,7 @@ impl TriggerQueueReader for PubSubTriggerReader {
     fn pull_trigger(&self) -> Result<Vec<(String, Trigger)>, Self::Error> {
         let result = self
             .client
-            .pull(self.subscription_id.as_str(), 10) // TODO: Set proper batch size
+            .pull(self.subscription_id.as_str(), 10) // TODO: Us config instead of hardcoded value
             .map_err(|ds| Error::PubSubError(format!("{:?}", ds)))?;
 
         Ok(result)
