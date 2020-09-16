@@ -44,7 +44,7 @@ where
 ///
 /// Intended for long-running processes that can be stopped externally.
 pub struct StoppableThread<T> {
-    join_handle: Option<thread::JoinHandle<T>>,
+    join_handle: thread::JoinHandle<T>,
     tx_stop: mpsc::Sender<()>,
 }
 
@@ -62,31 +62,18 @@ where
         let join_handle = thread::spawn(move || f(rx_stop));
 
         Self {
-            join_handle: Some(join_handle),
+            join_handle,
             tx_stop,
         }
     }
 
     /// Sends a stop signal to the thread, returns a join holding object.
-    pub fn stop(mut self) -> Result<JoinHolder<T>> {
-        ensure!(self.join_handle.is_some(), AlreadyStopped);
-
-        let handle = self.join_handle.take().unwrap(); // safe because of ensure.
+    pub fn stop(self) -> Result<JoinHolder<T>> {
+        let handle = self.join_handle; // safe because of ensure.
 
         ensure!(self.tx_stop.send(()).is_ok(), ShutdownRequestError);
 
         Ok(JoinHolder::new(handle))
-    }
-}
-
-impl<T> Drop for StoppableThread<T> {
-    fn drop(&mut self) {
-        if self.join_handle.is_some() {
-            let handle = self.join_handle.take().unwrap(); // safe because of if
-            if self.tx_stop.send(()).is_ok() && handle.join().is_err() {
-                log::error!("Join error");
-            }
-        }
     }
 }
 
