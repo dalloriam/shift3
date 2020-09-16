@@ -19,14 +19,14 @@ pub enum PubSubError {
     #[snafu(display("Failed to decode the data structure : {}", source))]
     FailedToDecodeDataStruct { source: base64::DecodeError },
 
-    #[snafu(display("Failed to publish the topic : {}", source))]
-    FailedToPublishTopic { source: google_pubsub1::Error },
+    #[snafu(display("Failed to publish the topic : {}", message))]
+    FailedToPublishTopic { message: String },
 
-    #[snafu(display("Failed to acknowledge the message : {}", source))]
-    FailedToAcknowledgeMessage { source: google_pubsub1::Error },
+    #[snafu(display("Failed to acknowledge the message : {}", message))]
+    FailedToAcknowledgeMessage { message: String },
 
-    #[snafu(display("Failed to pull the subscription : {}", source))]
-    FailedToPullSubscription { source: google_pubsub1::Error },
+    #[snafu(display("Failed to pull the subscription : {}", message))]
+    FailedToPullSubscription { message: String },
 
     #[snafu(display("PubSubClient - Unexpected empty response"))]
     EmptyResponse,
@@ -89,7 +89,9 @@ impl PubSubClient {
                 &format!("projects/{}/topics/{}", self.project_id, topic),
             )
             .doit()
-            .context(FailedToPublishTopic)?;
+            .map_err(|e| PubSubError::FailedToPublishTopic {
+                message: e.to_string(),
+            })?;
 
         Ok(())
     }
@@ -110,7 +112,9 @@ impl PubSubClient {
                 ),
             )
             .doit()
-            .context(FailedToAcknowledgeMessage)?;
+            .map_err(|e| PubSubError::FailedToAcknowledgeMessage {
+                message: e.to_string(),
+            })?;
 
         Ok(())
     }
@@ -143,7 +147,9 @@ impl PubSubClient {
                 ),
             )
             .doit()
-            .context(FailedToPullSubscription)?;
+            .map_err(|e| PubSubError::FailedToPullSubscription {
+                message: e.to_string(),
+            })?;
 
         if let Some(received_messages) = pull_resp.received_messages {
             let mut entities: Vec<(String, Entity)> = Vec::new();

@@ -8,19 +8,15 @@ use anyhow::{ensure, Result};
 use protocol::TriggerConfiguration;
 
 use crate::exec::{load_executors, ExecutorObj};
-use crate::interface::{TriggerConfigLoader, TriggerQueueWriter};
+use crate::{BoxedCfgLoader, BoxedQueueWriter};
 
 const EXIT_POLL_FREQUENCY: time::Duration = time::Duration::from_millis(100);
 const CONFIG_UPDATE_FREQUENCY: time::Duration = time::Duration::from_secs(60 * 5); // Default to 5 min. TODO: Make configurable.
 
 /// The trigger manager is the "main" thread of the trigger system.
-pub struct TriggerManager<T, Q>
-where
-    T: 'static + TriggerConfigLoader,
-    Q: 'static + TriggerQueueWriter,
-{
-    cfg_loader: T,
-    queue_writer: Q,
+pub struct TriggerManager {
+    cfg_loader: BoxedCfgLoader,
+    queue_writer: BoxedQueueWriter,
     stop_rx: mpsc::Receiver<()>,
 
     configs: Vec<TriggerConfiguration>,
@@ -29,12 +25,12 @@ where
     executors: HashMap<String, ExecutorObj>,
 }
 
-impl<T, Q> TriggerManager<T, Q>
-where
-    T: 'static + TriggerConfigLoader,
-    Q: 'static + TriggerQueueWriter,
-{
-    pub fn new(stop_rx: mpsc::Receiver<()>, cfg_loader: T, queue_writer: Q) -> Result<Self> {
+impl TriggerManager {
+    pub fn new(
+        stop_rx: mpsc::Receiver<()>,
+        cfg_loader: BoxedCfgLoader,
+        queue_writer: BoxedQueueWriter,
+    ) -> Result<Self> {
         let configs = cfg_loader.get_all_configurations()?;
 
         Ok(TriggerManager {

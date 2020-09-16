@@ -5,7 +5,7 @@ use crate::interface::{ActionConfigReader, ActionManifestQueueWriter, TriggerQue
 use crate::manager::TriggerManager;
 
 use std::sync::{Arc, Mutex};
-use toolkit::thread::StoppableThread;
+use toolkit::thread::{JoinHolder, StoppableThread};
 
 /// The trigger interpreter manages the operations of the trigger service.
 /// It manages its own threads and resources.
@@ -56,14 +56,21 @@ impl TriggerInterpreter {
         interpreter
     }
 
-    pub fn stop(mut self) -> Result<()> {
+    pub fn stop(self) -> Result<()> {
         log::info!("received request to stop");
 
-        // TODO: Handle possible errors sent by calling join
-        for handle in self.handles.iter_mut() {
-            handle
+        // Send stop signal to all threads.
+        let join_handles: Result<Vec<JoinHolder<()>>> = self
+            .handles
+            .into_iter()
+            .map(|h| h.stop().context("Failed to stop trigger manager"))
+            .collect();
+
+        // Join all threads.
+        for join_holder in join_handles?.into_iter() {
+            join_holder
                 .join()
-                .context("Failed to stop one of the trigger managers")?;
+                .context("Failed to join trigger manager thread")?;
         }
 
         log::info!("stop complete");

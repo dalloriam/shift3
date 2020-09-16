@@ -1,0 +1,5 @@
+{
+    "type": "DataStore",
+    "project_id": "asdf123",
+    "credentials_file_path": "/etc/gcloud.json"
+}

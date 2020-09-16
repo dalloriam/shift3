@@ -3,8 +3,8 @@ use std::fmt;
 use std::mem;
 
 use google_datastore1::{
-    CommitRequest, Datastore, Error as GoogleDsError, Filter, KindExpression, Mutation,
-    PropertyFilter, PropertyReference, Query, RunQueryRequest, Value,
+    CommitRequest, Datastore, Filter, KindExpression, Mutation, PropertyFilter, PropertyReference,
+    Query, RunQueryRequest, Value,
 };
 
 use hyper::Client;
@@ -31,8 +31,8 @@ impl fmt::Display for CommitMode {
 
 #[derive(Debug, Snafu)]
 pub enum DatastoreError {
-    InsertFailed { source: GoogleDsError },
-    QueryFailed { source: GoogleDsError },
+    InsertFailed { message: String },
+    QueryFailed { message: String },
     BadEntity { source: EntityConversionError },
     IncompleteData,
 }
@@ -102,7 +102,9 @@ impl DatastoreClient {
             .projects()
             .commit(request, &self.project_id)
             .doit()
-            .context(InsertFailed)?;
+            .map_err(|e| DatastoreError::InsertFailed {
+                message: e.to_string(),
+            })?;
 
         Ok(())
     }
@@ -164,7 +166,9 @@ impl DatastoreClient {
                 &self.project_id,
             )
             .doit()
-            .context(QueryFailed)?;
+            .map_err(|e| DatastoreError::QueryFailed {
+                message: e.to_string(),
+            })?;
 
         let batch = r.batch.ok_or(DatastoreError::IncompleteData)?;
         let entities = batch.entity_results.ok_or(DatastoreError::IncompleteData)?;
@@ -219,7 +223,9 @@ impl DatastoreClient {
                 &self.project_id,
             )
             .doit()
-            .context(QueryFailed)?;
+            .map_err(|e| DatastoreError::QueryFailed {
+                message: e.to_string(),
+            })?;
 
         let batch = r.batch.ok_or(DatastoreError::IncompleteData)?;
         let entities = batch.entity_results.ok_or(DatastoreError::IncompleteData)?;
@@ -243,7 +249,7 @@ impl Drop for DatastoreClient {
     fn drop(&mut self) {
         // Validate that nothing is in the tx buffer.
         if !self.mutation_buffer.is_empty() {
-            eprintln!("Warning: Transaction buffer not empty"); // TODO: Replace with `log` library.
+            log::error!("transaction buffer not empty")
         }
     }
 }

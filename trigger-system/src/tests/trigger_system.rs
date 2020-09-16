@@ -15,9 +15,11 @@ use super::mock;
 
 #[test]
 fn basic_test() {
-    let sys =
-        TriggerSystem::start::<mock::Dummy, mock::Dummy>(Default::default(), Default::default());
-    sys.stop().unwrap();
+    let sys = TriggerSystem::start(
+        Box::from(mock::Dummy::default()),
+        Box::new(mock::Dummy::default()),
+    );
+    sys.terminate().unwrap();
 }
 
 #[test]
@@ -32,8 +34,8 @@ fn in_memory_full_loop() {
         data: serde_json::to_string(&json!({ "directory": watched_dir_path })).unwrap(),
     };
 
-    let cfg_loader = mock::InMemoryConfigLoader::new(vec![trigger_config]);
-    let queue_writer = Arc::new(Mutex::new(mock::InMemoryQueueWriter::new()));
+    let cfg_loader = Box::from(mock::InMemoryConfigLoader::new(vec![trigger_config]));
+    let queue_writer = Box::from(Arc::new(Mutex::new(mock::InMemoryQueueWriter::new())));
 
     let system = TriggerSystem::start(cfg_loader, queue_writer.clone());
 
@@ -45,7 +47,7 @@ fn in_memory_full_loop() {
 
     thread::sleep(time::Duration::from_millis(200)); // Give the system a chance to pickup on the change.
 
-    system.stop().unwrap();
+    system.terminate().unwrap();
 
     // Now that the system is stopped, make sure our new file was picked up & put in queue.
     let mut queue_guard = queue_writer.lock().unwrap();

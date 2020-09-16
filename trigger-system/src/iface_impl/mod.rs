@@ -1,5 +1,2 @@
-mod config;
-mod trigger_writer;
-
-pub use config::DatastoreTriggerConfigLoader;
-pub use trigger_writer::PubsubTriggerQueueWriter;
+pub mod config;
+pub mod trigger_writer;

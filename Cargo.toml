@@ -5,7 +5,7 @@ members = [
     "interpreter-svc",
     "trigger-interpreter",
     "trigger-system",
-    "trigger-svc",
+    "process",
     "protocol",
     "toolkit"
 ]
