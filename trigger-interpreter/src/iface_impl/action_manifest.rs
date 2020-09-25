@@ -1,22 +1,10 @@
-use std::fmt;
+use std::path::Path;
 
+use anyhow::{Error, Result};
 use gcloud::{pub_sub::PubSubClient, AuthProvider};
 use protocol::ActionManifest;
 
 use crate::interface::ActionManifestQueueWriter;
-
-#[derive(Debug)]
-pub enum Error {
-    PubSubError(String),
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl std::error::Error for Error {}
 
 pub struct PubSubActionManifestWriter {
     client: PubSubClient,
@@ -30,16 +18,23 @@ impl PubSubActionManifestWriter {
             topic_id,
         }
     }
+
+    pub fn from_credentials<P: AsRef<Path>>(
+        project_id: String,
+        credentials_file_path: P,
+        topic: String,
+    ) -> Result<Self> {
+        let authenticator = AuthProvider::from_json_file(credentials_file_path)?;
+        Ok(Self::new(project_id, authenticator, topic))
+    }
 }
 
 impl ActionManifestQueueWriter for PubSubActionManifestWriter {
-    type Error = Error;
-
-    fn push_action_manifest(&self, manifest: ActionManifest) -> Result<(), Self::Error> {
+    fn push_action_manifest(&self, manifest: ActionManifest) -> Result<()> {
         let result = self
             .client
             .publish(manifest, self.topic_id.as_str())
-            .map_err(|ds| Error::PubSubError(format!("{:?}", ds)))?;
+            .map_err(|ds| Error::msg(format!("{:?}", ds)))?;
 
         Ok(result)
     }

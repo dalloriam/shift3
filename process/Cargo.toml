@@ -29,3 +29,4 @@ polyglot = {version = "0.2.1", features = ["json_fmt", "toml_fmt", "yaml_fmt"]}
 serde = {version = "1.0", features = ["derive"]}
 toolkit = {path = "../toolkit"}
 trigger-system = {path = "../trigger-system"}
+trigger-interpreter = {path = "../trigger-interpreter"}

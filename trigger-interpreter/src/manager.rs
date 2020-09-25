@@ -1,37 +1,25 @@
-use anyhow::Result;
 use std::sync::{mpsc, Arc, Mutex};
+
+use anyhow::Result;
 
 use protocol::{ActionManifest, Trigger};
 
-use crate::{
-    interface::{ActionConfigReader, ActionManifestQueueWriter, TriggerQueueReader},
-    templating::render_template,
-};
+use crate::{templating::render_template, BoxedCfgReader, BoxedQueueReader, BoxedQueueWriter};
 
 /// The interpreter manager is the "main" thread of the trigger interpreter.
-pub struct TriggerManager<R, A, W>
-where
-    R: 'static + TriggerQueueReader,
-    A: 'static + ActionConfigReader,
-    W: 'static + ActionManifestQueueWriter,
-{
-    queue_reader: R,
-    cfg_reader: Arc<Mutex<A>>,
-    queue_writer: Arc<Mutex<W>>,
+pub struct TriggerManager {
+    queue_reader: BoxedQueueReader,
+    cfg_reader: Arc<Mutex<BoxedCfgReader>>,
+    queue_writer: Arc<Mutex<BoxedQueueWriter>>,
     stop_rx: mpsc::Receiver<()>,
 }
 
-impl<R, A, W> TriggerManager<R, A, W>
-where
-    R: 'static + TriggerQueueReader + Send + Clone,
-    A: 'static + ActionConfigReader + Send,
-    W: 'static + ActionManifestQueueWriter + Send,
-{
+impl TriggerManager {
     pub fn new(
         stop_rx: mpsc::Receiver<()>,
-        queue_reader: R,
-        cfg_reader: Arc<Mutex<A>>,
-        queue_writer: Arc<Mutex<W>>,
+        queue_reader: BoxedQueueReader,
+        cfg_reader: Arc<Mutex<BoxedCfgReader>>,
+        queue_writer: Arc<Mutex<BoxedQueueWriter>>,
     ) -> Result<Self> {
         Ok(Self {
             queue_reader,

@@ -1,11 +1,12 @@
-use anyhow::{Context, Result};
-
-use crate::interface::{ActionConfigReader, ActionManifestQueueWriter, TriggerQueueReader};
-
-use crate::manager::TriggerManager;
-
 use std::sync::{Arc, Mutex};
-use toolkit::thread::{JoinHolder, StoppableThread};
+
+use anyhow::{Context, Error, Result};
+use toolkit::{
+    thread::{JoinHolder, StoppableThread},
+    Stop,
+};
+
+use crate::{manager::TriggerManager, BoxedCfgReader, BoxedQueueReader, BoxedQueueWriter};
 
 /// The trigger interpreter manages the operations of the trigger service.
 /// It manages its own threads and resources.
@@ -15,14 +16,10 @@ pub struct TriggerInterpreter {
 
 impl TriggerInterpreter {
     /// Starts the trigger interpreter
-    pub fn start<
-        R: 'static + TriggerQueueReader + Send + Clone,
-        A: 'static + ActionConfigReader + Send,
-        W: 'static + ActionManifestQueueWriter + Send,
-    >(
-        queue_reader: R,
-        cfg_reader: A,
-        queue_writer: W,
+    pub fn start(
+        queue_reader: BoxedQueueReader,
+        cfg_reader: BoxedCfgReader,
+        queue_writer: BoxedQueueWriter,
     ) -> Self {
         log::debug!("begin pulling trigger data");
 
@@ -56,7 +53,9 @@ impl TriggerInterpreter {
         interpreter
     }
 
-    pub fn stop(self) -> Result<()> {
+    /// Called by Stop. Used to enable terminating
+    /// the system without boxing it first.
+    pub fn terminate(self) -> Result<()> {
         log::info!("received request to stop");
 
         // Send stop signal to all threads.
@@ -76,5 +75,13 @@ impl TriggerInterpreter {
         log::info!("stop complete");
 
         Ok(())
+    }
+}
+
+impl Stop for TriggerInterpreter {
+    type Error = Error;
+
+    fn stop(self: Box<Self>) -> Result<()> {
+        self.terminate()
     }
 }
