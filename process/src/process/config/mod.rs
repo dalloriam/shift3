@@ -1,3 +1,4 @@
+mod executor;
 mod interpreter;
 mod trigger;
 
@@ -17,6 +18,7 @@ pub struct Configuration {
 pub enum SystemConfiguration {
     Trigger(trigger::TriggerSystemConfiguration),
     Interpreter(interpreter::TriggerInterpreterConfiguration),
+    Executor(executor::ExecutorSystemConfiguration),
 }
 
 impl SystemConfiguration {
@@ -24,6 +26,7 @@ impl SystemConfiguration {
         match self {
             SystemConfiguration::Trigger(cfg) => cfg.into_instance(),
             SystemConfiguration::Interpreter(cfg) => cfg.into_instance(),
+            SystemConfiguration::Executor(cfg) => cfg.into_instance(),
         }
     }
 }

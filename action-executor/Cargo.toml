@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1"
+gcloud = {path = "../gcloud"}
 log = "0.4"
 protocol = {path = "../protocol"}
 toolkit = {path = "../toolkit"}
