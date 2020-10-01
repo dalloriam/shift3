@@ -9,7 +9,7 @@ edition = "2018"
 tempfile = "3"
 
 [dependencies]
-base64 = "0.12"
+base64 = "0.13"
 google-datastore1 = "*"
 google-pubsub1 = "*"
 hyper = "^0.10"
