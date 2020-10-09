@@ -36,8 +36,13 @@ impl PubsubActionManifestQueueReader {
 }
 
 impl ActionManifestQueueReader for PubsubActionManifestQueueReader {
-    fn pull_action_manifest(&self) -> Result<ActionManifest> {
-        let (ack_id, manifest) = self.client.pull(self.subscription_id.as_ref(), 10)?;
-        Ok(manifest)
+    fn batch_ack(&self, ack_ids: Vec<String>) -> Result<()> {
+        self.client.acknowledge(ack_ids, &self.subscription_id)?;
+        Ok(())
+    }
+
+    fn pull_action_manifests(&self) -> Result<Vec<(String, ActionManifest)>> {
+        let results = self.client.pull(self.subscription_id.as_ref(), 10)?;
+        Ok(results)
     }
 }

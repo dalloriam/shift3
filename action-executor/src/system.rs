@@ -1,4 +1,6 @@
-use toolkit::thread::StoppableThread;
+use anyhow::{Context, Error, Result};
+
+use toolkit::{thread::StoppableThread, Stop};
 
 use crate::manager::ExecutorManager;
 use crate::BoxedQueueReader;
@@ -23,5 +25,27 @@ impl ExecutorSystem {
         log::info!("system started");
 
         sys
+    }
+
+    pub fn terminate(self) -> Result<()> {
+        log::info!("received request to stop");
+
+        self.handle
+            .stop()
+            .context("Failed to stop executor: ")?
+            .join()
+            .context("Failed to join executor thread")?;
+
+        log::info!("stop complete");
+
+        Ok(())
+    }
+}
+
+impl Stop for ExecutorSystem {
+    type Error = Error;
+
+    fn stop(self: Box<Self>) -> Result<()> {
+        self.terminate()
     }
 }

@@ -70,11 +70,7 @@ impl TriggerManager {
                 self.interpret_trigger(trigger)?;
 
                 log::debug!("acknowledging the message ({})", id);
-
-                let mut ids = Vec::new();
-                ids.push(id);
-
-                self.queue_reader.acknowlege(ids)?;
+                self.queue_reader.acknowlege(vec![id])?;
             }
 
             if self.stop_rx.try_recv().is_ok() {
