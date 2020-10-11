@@ -1,13 +1,19 @@
+use std::collections::HashMap;
 use std::sync::mpsc;
 
 use anyhow::Result;
 
-use crate::BoxedQueueReader;
+use crate::{
+    exec::{load_executors, ExecutorObj},
+    BoxedQueueReader,
+};
 
 pub struct ExecutorManager {
     manifest_reader: BoxedQueueReader,
 
     stop_rx: mpsc::Receiver<()>,
+
+    executors: HashMap<String, ExecutorObj>,
 }
 
 impl ExecutorManager {
@@ -15,6 +21,7 @@ impl ExecutorManager {
         Ok(ExecutorManager {
             manifest_reader,
             stop_rx,
+            executors: load_executors()?,
         })
     }
 
@@ -23,7 +30,16 @@ impl ExecutorManager {
         let mut res: Result<()> = Ok(());
 
         for (ack_id, action_manifest) in self.manifest_reader.pull_action_manifests()? {
-            log::info!("got manifest: {:?}", action_manifest);
+            log::debug!("got manifest: {:?}", action_manifest);
+
+            if let Some(ex) = self.executors.get(&action_manifest.action_type) {
+                res = ex.execute(action_manifest);
+                if res.is_err() {
+                    break;
+                }
+            } else {
+                log::warn!("unknown action type: {:?}", &action_manifest.action_type);
+            }
 
             ack_ids.push(ack_id);
         }

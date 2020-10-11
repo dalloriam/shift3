@@ -1,3 +1,5 @@
+mod builtins;
+mod exec;
 pub mod iface_impl;
 mod interfaces;
 mod manager;

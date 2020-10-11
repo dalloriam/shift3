@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use anyhow::{ensure, Result};
+use anyhow::Result;
 
 use gcloud::{pub_sub::PubSubClient, AuthProvider};
 
