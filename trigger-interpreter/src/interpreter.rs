@@ -30,6 +30,7 @@ impl TriggerInterpreter {
         let config = Arc::new(Mutex::new(cfg_reader));
         let writer = Arc::new(Mutex::new(queue_writer));
 
+        // TODO: Maybe add possiblity to customize the number of available managers
         for _ in 0..9 {
             let config_copy = config.clone();
             let writer_copy = writer.clone();

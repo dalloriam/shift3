@@ -119,10 +119,11 @@ impl PubSubClient {
         Ok(())
     }
 
-    /// Pulls a single entity from a Pub/Sub subscription.
+    /// Pulls N entities from a Pub/Sub subscription.
     ///
-    /// The function allows to pull a JSON deserializable entity from a Pub/Sub subscription.
+    /// The function allows to pull JSON deserializable entities from a Pub/Sub subscription.
     /// Therefore, the entity must implement serde's DeserializeOwned trait.
+    /// Returns a vector of a tuple of the ID needed to acknowledge the message and the message.
     pub fn pull<Entity>(
         &self,
         subscription: &str,
