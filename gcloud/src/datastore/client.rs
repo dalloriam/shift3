@@ -183,7 +183,7 @@ impl DatastoreClient {
         Ok(results)
     }
 
-    /// Get a rule by its id.
+    /// Get an entity by its id.
     pub fn get<T>(&self, id: u64) -> Result<Option<T>>
     where
         T: DatastoreEntity,
@@ -240,6 +240,7 @@ impl DatastoreClient {
         if results.is_empty() {
             Ok(None)
         } else {
+            // Only keep the first element
             Ok(Some(results.remove(0)))
         }
     }

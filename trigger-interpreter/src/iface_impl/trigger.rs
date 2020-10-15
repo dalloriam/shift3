@@ -1,7 +1,11 @@
-use std::path::Path;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
-use anyhow::{Error, Result};
+use anyhow::{ensure, Error, Result};
 use gcloud::{pub_sub::PubSubClient, AuthProvider};
+use glob::glob;
 use protocol::Trigger;
 
 use crate::interface::TriggerQueueReader;
@@ -63,6 +67,56 @@ impl TriggerQueueReader for PubSubTriggerReader {
             .acknowledge(ack_ids, self.subscription_id.as_str())
             .map_err(|ds| Error::msg(format!("{:?}", ds)))?;
 
+        Ok(())
+    }
+}
+
+/// Reads triggers from a directory.
+pub struct FileTriggerQueueReader {
+    path: PathBuf,
+}
+
+impl FileTriggerQueueReader {
+    pub fn new<P: AsRef<Path>>(path: P) -> Result<Self> {
+        ensure!(
+            path.as_ref().exists(),
+            format!("{:?} does not exist", path.as_ref())
+        );
+
+        Ok(Self {
+            path: PathBuf::from(path.as_ref()),
+        })
+    }
+}
+
+impl TriggerQueueReader for FileTriggerQueueReader {
+    fn pull_trigger(&self) -> Result<Vec<(String, Trigger)>> {
+        let entries = glob(&format!(
+            "{}/trigger_*.txt",
+            self.path.to_string_lossy().as_ref()
+        ))
+        .expect("Failed to read glob pattern")
+        .filter_map(|x| x.ok());
+
+        let mut rules: Vec<(String, Trigger)> = Vec::new();
+        for path in entries {
+            let data = fs::read_to_string(path.clone())?;
+            // Adds the unnecessary acknowledge id and the trigger data to the vector
+            rules.push((String::from(""), serde_json::from_str(data.as_ref())?));
+            // Delete the file once it was read
+            fs::remove_file(path)?
+        }
+
+        Ok(rules)
+    }
+
+    fn box_clone(&self) -> Box<dyn TriggerQueueReader + Send> {
+        Box::new(FileTriggerQueueReader {
+            path: self.path.clone(),
+        })
+    }
+
+    fn acknowlege(&self, _: Vec<String>) -> Result<()> {
         Ok(())
     }
 }

@@ -1,6 +1,6 @@
 use std::sync::{mpsc, Arc, Mutex};
 
-use anyhow::Result;
+use anyhow::{Error, Result};
 
 use protocol::{ActionManifest, Trigger};
 
@@ -60,30 +60,40 @@ impl TriggerManager {
     }
 
     fn pull_trigger(&self) -> Result<()> {
+        let triggers = self.queue_reader.pull_trigger()?;
+        log::debug!("number of messages pulled ({:?})", triggers.len());
+
+        // TODO: Use same capacity as the batch size used during queue reading
+        let mut ack_ids = Vec::with_capacity(10);
+        let mut result: Result<(), Error> = Ok(());
+
+        for (id, trigger) in triggers {
+            if let Err(err) = self.interpret_trigger(trigger) {
+                result = Err(err);
+                break;
+            }
+
+            ack_ids.push(id);
+        }
+
+        if !ack_ids.is_empty() {
+            self.queue_reader.acknowlege(ack_ids)?;
+        }
+
+        result
+    }
+
+    pub fn start(&self) {
         log::debug!("begin pulling trigger data");
 
         loop {
-            let triggers = self.queue_reader.pull_trigger()?;
-            log::debug!("number of messages pulled ({:?})", triggers.len());
-
-            for (id, trigger) in triggers {
-                self.interpret_trigger(trigger)?;
-
-                log::debug!("acknowledging the message ({})", id);
-                self.queue_reader.acknowlege(vec![id])?;
+            if let Err(e) = self.pull_trigger() {
+                log::error!("{:?}", e);
             }
 
             if self.stop_rx.try_recv().is_ok() {
                 break;
             }
-        }
-
-        Ok(())
-    }
-
-    pub fn start(&self) {
-        if let Err(e) = self.pull_trigger() {
-            log::error!("{:?}", e);
         }
     }
 }

@@ -1,6 +1,10 @@
-use std::path::Path;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    sync::atomic::{AtomicU64, Ordering},
+};
 
-use anyhow::{Error, Result};
+use anyhow::{ensure, Error, Result};
 use gcloud::{pub_sub::PubSubClient, AuthProvider};
 use protocol::ActionManifest;
 
@@ -37,5 +41,37 @@ impl ActionManifestQueueWriter for PubSubActionManifestWriter {
             .map_err(|ds| Error::msg(format!("{:?}", ds)))?;
 
         Ok(result)
+    }
+}
+
+/// Writes action manifests to a directory.
+pub struct FileActionManifestWriter {
+    counter: AtomicU64,
+    path: PathBuf,
+}
+
+impl FileActionManifestWriter {
+    pub fn new<P: AsRef<Path>>(path: P) -> Result<Self> {
+        ensure!(
+            path.as_ref().exists(),
+            format!("{:?} does not exist", path.as_ref())
+        );
+
+        Ok(Self {
+            counter: AtomicU64::new(0),
+            path: PathBuf::from(path.as_ref()),
+        })
+    }
+}
+
+impl ActionManifestQueueWriter for FileActionManifestWriter {
+    fn push_action_manifest(&self, manifest: ActionManifest) -> Result<()> {
+        let value = self.counter.fetch_add(1, Ordering::SeqCst);
+        let path = self.path.join(format!("action_manifest_{}.txt", value));
+
+        let file_handle = fs::File::create(path)?;
+        serde_json::to_writer(file_handle, &manifest)?;
+
+        Ok(())
     }
 }

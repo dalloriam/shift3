@@ -1,6 +1,9 @@
-use std::path::Path;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
-use anyhow::{Error, Result};
+use anyhow::{ensure, Error, Result};
 use gcloud::{datastore::DatastoreClient, AuthProvider};
 use protocol::{Rule, RuleID};
 
@@ -37,5 +40,34 @@ impl ActionConfigReader for DatastoreActionConfigLoader {
             None => Err(Error::msg(format!("Rule with id '{}' not found.", id))),
             Some(r) => Ok(r),
         }
+    }
+}
+
+/// Reads action configurations from a directory.
+pub struct FileActionConfigReader {
+    path: PathBuf,
+}
+
+impl FileActionConfigReader {
+    pub fn new<P: AsRef<Path>>(path: P) -> Result<Self> {
+        ensure!(
+            path.as_ref().exists(),
+            format!("{:?} does not exist", path.as_ref())
+        );
+
+        Ok(Self {
+            path: PathBuf::from(path.as_ref()),
+        })
+    }
+}
+
+impl ActionConfigReader for FileActionConfigReader {
+    fn get_rule(&self, id: RuleID) -> Result<Rule> {
+        let path = self.path.join(format!("action_config_{}.txt", id));
+
+        let data = fs::read_to_string(path)?;
+        let rule = serde_json::from_str(data.as_ref())?;
+
+        Ok(rule)
     }
 }
