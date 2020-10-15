@@ -1,4 +1,3 @@
-mod builtins;
 mod exec;
 pub mod iface_impl;
 mod interfaces;
@@ -9,3 +8,6 @@ pub use interfaces::ActionManifestQueueReader;
 pub use system::ExecutorSystem;
 
 type BoxedQueueReader = Box<dyn ActionManifestQueueReader + Send>;
+
+#[cfg(test)]
+mod tests;

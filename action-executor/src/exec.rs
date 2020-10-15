@@ -4,8 +4,6 @@ use anyhow::Result;
 
 use protocol::ActionManifest;
 
-use crate::builtins;
-
 pub trait ActionExecutor {
     fn execute(&self, manifest: ActionManifest) -> Result<()>;
 }
@@ -27,13 +25,8 @@ impl From<String> for ActionType {
 }
 
 pub fn load_executors() -> Result<HashMap<String, ExecutorObj>> {
-    // TODO: Use config here instead of hardcoding.
-    let mut executors: HashMap<String, Box<dyn ActionExecutor>> = HashMap::new();
-
-    executors.insert(
-        String::from("notify"),
-        Box::from(builtins::NotifyAction::default()),
-    );
+    // TODO: Use plugins
+    let executors: HashMap<String, Box<dyn ActionExecutor>> = HashMap::new();
 
     Ok(executors)
 }
