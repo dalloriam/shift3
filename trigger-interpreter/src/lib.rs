@@ -11,3 +11,7 @@ mod templating;
 pub use interface::{ActionConfigReader, ActionManifestQueueWriter, TriggerQueueReader};
 pub use interpreter::TriggerInterpreter;
 pub use templating::render_template;
+
+type BoxedCfgReader = Box<dyn ActionConfigReader + Send>;
+type BoxedQueueReader = Box<dyn TriggerQueueReader + Send>;
+type BoxedQueueWriter = Box<dyn ActionManifestQueueWriter + Send>;

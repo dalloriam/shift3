@@ -1,22 +1,14 @@
-use std::fmt;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    sync::atomic::{AtomicU64, Ordering},
+};
 
+use anyhow::{ensure, Error, Result};
 use gcloud::{pub_sub::PubSubClient, AuthProvider};
 use protocol::ActionManifest;
 
 use crate::interface::ActionManifestQueueWriter;
-
-#[derive(Debug)]
-pub enum Error {
-    PubSubError(String),
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl std::error::Error for Error {}
 
 pub struct PubSubActionManifestWriter {
     client: PubSubClient,
@@ -30,17 +22,56 @@ impl PubSubActionManifestWriter {
             topic_id,
         }
     }
+
+    pub fn from_credentials<P: AsRef<Path>>(
+        project_id: String,
+        credentials_file_path: P,
+        topic: String,
+    ) -> Result<Self> {
+        let authenticator = AuthProvider::from_json_file(credentials_file_path)?;
+        Ok(Self::new(project_id, authenticator, topic))
+    }
 }
 
 impl ActionManifestQueueWriter for PubSubActionManifestWriter {
-    type Error = Error;
-
-    fn push_action_manifest(&self, manifest: ActionManifest) -> Result<(), Self::Error> {
+    fn push_action_manifest(&self, manifest: ActionManifest) -> Result<()> {
         let result = self
             .client
             .publish(manifest, self.topic_id.as_str())
-            .map_err(|ds| Error::PubSubError(format!("{:?}", ds)))?;
+            .map_err(|ds| Error::msg(format!("{:?}", ds)))?;
 
         Ok(result)
+    }
+}
+
+/// Writes action manifests to a directory.
+pub struct FileActionManifestWriter {
+    counter: AtomicU64,
+    path: PathBuf,
+}
+
+impl FileActionManifestWriter {
+    pub fn new<P: AsRef<Path>>(path: P) -> Result<Self> {
+        ensure!(
+            path.as_ref().exists(),
+            format!("{:?} does not exist", path.as_ref())
+        );
+
+        Ok(Self {
+            counter: AtomicU64::new(0),
+            path: PathBuf::from(path.as_ref()),
+        })
+    }
+}
+
+impl ActionManifestQueueWriter for FileActionManifestWriter {
+    fn push_action_manifest(&self, manifest: ActionManifest) -> Result<()> {
+        let value = self.counter.fetch_add(1, Ordering::SeqCst);
+        let path = self.path.join(format!("action_manifest_{}.txt", value));
+
+        let file_handle = fs::File::create(path)?;
+        serde_json::to_writer(file_handle, &manifest)?;
+
+        Ok(())
     }
 }

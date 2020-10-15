@@ -1,22 +1,13 @@
-use std::fmt;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
+use anyhow::{ensure, Error, Result};
 use gcloud::{datastore::DatastoreClient, AuthProvider};
 use protocol::{Rule, RuleID};
 
 use crate::interface::ActionConfigReader;
-
-#[derive(Debug)]
-pub enum Error {
-    DatastoreError(String),
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl std::error::Error for Error {}
 
 pub struct DatastoreActionConfigLoader {
     client: DatastoreClient,
@@ -28,23 +19,55 @@ impl DatastoreActionConfigLoader {
             client: DatastoreClient::new(project_id, authenticator),
         }
     }
+
+    pub fn from_credentials<P: AsRef<Path>>(
+        project_id: String,
+        credentials_file_path: P,
+    ) -> Result<Self> {
+        let authenticator = AuthProvider::from_json_file(credentials_file_path)?;
+        Ok(Self::new(project_id, authenticator))
+    }
 }
 
 impl ActionConfigReader for DatastoreActionConfigLoader {
-    type Error = Error;
-
-    fn get_rule(&self, id: RuleID) -> Result<Rule, Self::Error> {
+    fn get_rule(&self, id: RuleID) -> Result<Rule> {
         let result: Option<Rule> = self
             .client
             .get(id)
-            .map_err(|ds| Error::DatastoreError(format!("{:?}", ds)))?;
+            .map_err(|ds| Error::msg(format!("{:?}", ds)))?;
 
         match result {
-            None => Err(Error::DatastoreError(format!(
-                "Rule with id '{}' not found.",
-                id
-            ))),
+            None => Err(Error::msg(format!("Rule with id '{}' not found.", id))),
             Some(r) => Ok(r),
         }
+    }
+}
+
+/// Reads action configurations from a directory.
+pub struct FileActionConfigReader {
+    path: PathBuf,
+}
+
+impl FileActionConfigReader {
+    pub fn new<P: AsRef<Path>>(path: P) -> Result<Self> {
+        ensure!(
+            path.as_ref().exists(),
+            format!("{:?} does not exist", path.as_ref())
+        );
+
+        Ok(Self {
+            path: PathBuf::from(path.as_ref()),
+        })
+    }
+}
+
+impl ActionConfigReader for FileActionConfigReader {
+    fn get_rule(&self, id: RuleID) -> Result<Rule> {
+        let path = self.path.join(format!("action_config_{}.txt", id));
+
+        let data = fs::read_to_string(path)?;
+        let rule = serde_json::from_str(data.as_ref())?;
+
+        Ok(rule)
     }
 }
