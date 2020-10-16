@@ -16,7 +16,7 @@ pub struct PubsubActionManifestQueueReader {
 impl PubsubActionManifestQueueReader {
     pub fn new(project_id: String, authenticator: AuthProvider, subscription_id: String) -> Self {
         PubsubActionManifestQueueReader {
-            client: PubSubClient::new(project_id.clone(), authenticator),
+            client: PubSubClient::new(project_id, authenticator),
             subscription_id,
         }
     }
