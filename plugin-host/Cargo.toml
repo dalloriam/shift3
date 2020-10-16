@@ -1,0 +1,12 @@
+[package]
+name = "plugin-host"
+version = "0.1.0"
+authors = ["William Dussault <dalloriam@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+libloading = "0.6"
+plugin-core = {path = "../plugin-core"}
+snafu = "0.6"
