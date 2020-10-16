@@ -1,8 +1,13 @@
+use std::path::PathBuf;
+use std::sync::Arc;
+
 mod executor;
 mod interpreter;
 mod trigger;
 
 use anyhow::Result;
+
+use plugin_host::PluginHost;
 
 use serde::{Deserialize, Serialize};
 
@@ -10,6 +15,7 @@ use crate::Service;
 
 #[derive(Deserialize, Serialize)]
 pub struct Configuration {
+    pub plugin_paths: Vec<PathBuf>,
     pub systems: Vec<SystemConfiguration>,
 }
 
@@ -22,11 +28,11 @@ pub enum SystemConfiguration {
 }
 
 impl SystemConfiguration {
-    pub fn into_instance(self) -> Result<Service> {
+    pub fn into_instance(self, host: Arc<PluginHost>) -> Result<Service> {
         match self {
-            SystemConfiguration::Trigger(cfg) => cfg.into_instance(),
-            SystemConfiguration::Interpreter(cfg) => cfg.into_instance(),
-            SystemConfiguration::Executor(cfg) => cfg.into_instance(),
+            SystemConfiguration::Trigger(cfg) => cfg.into_instance(host.clone()),
+            SystemConfiguration::Interpreter(cfg) => cfg.into_instance(host.clone()),
+            SystemConfiguration::Executor(cfg) => cfg.into_instance(host.clone()),
         }
     }
 }

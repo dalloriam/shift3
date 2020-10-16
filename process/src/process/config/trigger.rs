@@ -1,6 +1,9 @@
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use anyhow::Result;
+
+use plugin_host::PluginHost;
 
 use serde::{Deserialize, Serialize};
 
@@ -21,7 +24,7 @@ pub struct TriggerSystemConfiguration {
 
 impl TriggerSystemConfiguration {
     /// Converts the trigger system configuration to a usable service instance.
-    pub fn into_instance(self) -> Result<Service> {
+    pub fn into_instance(self, plugin_host: Arc<PluginHost>) -> Result<Service> {
         let cfg_loader = self.config_reader.into_instance()?;
         let queue_writer = self.queue_writer.into_instance()?;
         Ok(Box::from(TriggerSystem::start(cfg_loader, queue_writer)))

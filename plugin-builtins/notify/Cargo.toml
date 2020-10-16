@@ -1,13 +1,16 @@
 [package]
-name = "plugin-host"
+name = "notify"
 version = "0.1.0"
 authors = ["William Dussault <dalloriam@gmail.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[lib]
+crate-type = ["cdylib"]
+
 [dependencies]
-libloading = "0.6"
-log = "0.4"
-plugin-core = {path = "../plugin-core"}
-snafu = "0.6"
+plugin-core = {path = "../../plugin-core"}
+protocol = {path = "../../protocol"}
+serde = {version = "1", features=["derive"]}
+serde_json = "1"

@@ -26,6 +26,7 @@ ctrlc = "3.1"
 env_logger = "0.7"
 gcloud = {path = "../gcloud"}
 log = "0.4"
+plugin-host = {path = "../plugin-host"}
 polyglot = {version = "0.2.1", features = ["json_fmt", "toml_fmt", "yaml_fmt"]}
 serde = {version = "1.0", features = ["derive"]}
 toolkit = {path = "../toolkit"}

@@ -8,5 +8,6 @@ members = [
     "protocol",
     "toolkit",
     "plugin-core",
-    "plugin-host"
+    "plugin-host",
+    "plugin-builtins/notify"
 ]
