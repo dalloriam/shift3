@@ -15,3 +15,6 @@ pub use templating::render_template;
 type BoxedCfgReader = Box<dyn ActionConfigReader + Send>;
 type BoxedQueueReader = Box<dyn TriggerQueueReader + Send>;
 type BoxedQueueWriter = Box<dyn ActionManifestQueueWriter + Send>;
+
+#[cfg(test)]
+mod tests;

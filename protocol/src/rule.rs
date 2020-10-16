@@ -4,7 +4,7 @@ use gcloud::datastore::DatastoreEntity;
 
 use crate::RuleID;
 
-#[derive(Debug, DatastoreEntity, Deserialize, Serialize)]
+#[derive(Clone, Debug, DatastoreEntity, Deserialize, Serialize)]
 pub struct Rule {
     pub id: RuleID,
     pub trigger_config_id: u64,

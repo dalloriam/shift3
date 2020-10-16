@@ -56,7 +56,7 @@ impl TriggerQueueReader for PubSubTriggerReader {
     fn pull_trigger(&self) -> Result<Vec<(String, Trigger)>> {
         let result = self
             .client
-            .pull(self.subscription_id.as_str(), 10) // TODO: Us config instead of hardcoded value
+            .pull(self.subscription_id.as_str(), 10) // TODO: Use config instead of hardcoded value
             .map_err(|ds| Error::msg(format!("{:?}", ds)))?;
 
         Ok(result)

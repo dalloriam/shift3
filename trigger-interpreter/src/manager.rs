@@ -1,4 +1,4 @@
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::mpsc;
 
 use anyhow::{Error, Result};
 
@@ -9,8 +9,8 @@ use crate::{templating::render_template, BoxedCfgReader, BoxedQueueReader, Boxed
 /// The interpreter manager is the "main" thread of the trigger interpreter.
 pub struct TriggerManager {
     queue_reader: BoxedQueueReader,
-    cfg_reader: Arc<Mutex<BoxedCfgReader>>,
-    queue_writer: Arc<Mutex<BoxedQueueWriter>>,
+    cfg_reader: BoxedCfgReader,
+    queue_writer: BoxedQueueWriter,
     stop_rx: mpsc::Receiver<()>,
 }
 
@@ -18,8 +18,8 @@ impl TriggerManager {
     pub fn new(
         stop_rx: mpsc::Receiver<()>,
         queue_reader: BoxedQueueReader,
-        cfg_reader: Arc<Mutex<BoxedCfgReader>>,
-        queue_writer: Arc<Mutex<BoxedQueueWriter>>,
+        cfg_reader: BoxedCfgReader,
+        queue_writer: BoxedQueueWriter,
     ) -> Result<Self> {
         Ok(Self {
             queue_reader,
@@ -32,12 +32,9 @@ impl TriggerManager {
     fn interpret_trigger(&self, trigger: Trigger) -> Result<()> {
         log::debug!("begin interpreting the trigger data");
 
-        // Get action configuration associated with the trigger's rule.
-        let mut cfg_reader_guard = self.cfg_reader.lock().unwrap();
-        let cfg_reader_ref = &mut (*cfg_reader_guard);
-
         log::debug!("fetching the rule ({}) by its id", trigger.rule);
-        let rule = cfg_reader_ref.get_rule(trigger.rule)?;
+        // Get action configuration associated with the trigger's rule.
+        let rule = self.cfg_reader.get_rule(trigger.rule)?;
         log::debug!("rule fetched {:?}", rule);
 
         log::debug!("rendering the template from the action configuration");
@@ -50,11 +47,8 @@ impl TriggerManager {
             data: action_config,
         };
 
-        let mut queue_writer_guard = self.queue_writer.lock().unwrap();
-        let queue_writer_ref = &mut (*queue_writer_guard);
-
         log::debug!("pushing the action manifest");
-        queue_writer_ref.push_action_manifest(action_manifest)?;
+        self.queue_writer.push_action_manifest(action_manifest)?;
 
         Ok(())
     }

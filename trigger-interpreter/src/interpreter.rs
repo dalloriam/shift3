@@ -1,17 +1,12 @@
-use std::sync::{Arc, Mutex};
-
 use anyhow::{Context, Error, Result};
-use toolkit::{
-    thread::{JoinHolder, StoppableThread},
-    Stop,
-};
+use toolkit::{thread::StoppableThread, Stop};
 
 use crate::{manager::TriggerManager, BoxedCfgReader, BoxedQueueReader, BoxedQueueWriter};
 
 /// The trigger interpreter manages the operations of the trigger service.
-/// It manages its own threads and resources.
+/// It manages its own thread and resources.
 pub struct TriggerInterpreter {
-    handles: Vec<StoppableThread<()>>,
+    handle: StoppableThread<()>,
 }
 
 impl TriggerInterpreter {
@@ -23,31 +18,14 @@ impl TriggerInterpreter {
     ) -> Self {
         log::debug!("begin pulling trigger data");
 
-        let mut interpreter = Self {
-            handles: Vec::new(),
-        };
-
-        let config = Arc::new(Mutex::new(cfg_reader));
-        let writer = Arc::new(Mutex::new(queue_writer));
-
-        // TODO: Maybe add possiblity to customize the number of available managers
-        for _ in 0..9 {
-            let config_copy = config.clone();
-            let writer_copy = writer.clone();
-            let reader_copy = queue_reader.clone();
-
-            interpreter.handles.push(StoppableThread::spawn(
-                move |stop_rx| match TriggerManager::new(
-                    stop_rx,
-                    reader_copy,
-                    config_copy,
-                    writer_copy,
-                ) {
+        let interpreter = Self {
+            handle: StoppableThread::spawn(move |stop_rx| {
+                match TriggerManager::new(stop_rx, queue_reader, cfg_reader, queue_writer) {
                     Ok(man) => man.start(),
                     Err(e) => log::error!("failed to start interpreter manager: {:?}", e),
-                },
-            ));
-        }
+                }
+            }),
+        };
 
         log::info!("interpreter started");
 
@@ -59,19 +37,11 @@ impl TriggerInterpreter {
     pub fn terminate(self) -> Result<()> {
         log::info!("received request to stop");
 
-        // Send stop signal to all threads.
-        let join_handles: Result<Vec<JoinHolder<()>>> = self
-            .handles
-            .into_iter()
-            .map(|h| h.stop().context("Failed to stop trigger manager"))
-            .collect();
-
-        // Join all threads.
-        for join_holder in join_handles?.into_iter() {
-            join_holder
-                .join()
-                .context("Failed to join trigger manager thread")?;
-        }
+        self.handle
+            .stop()
+            .context("Failed to stop trigger interpreter manager")?
+            .join()
+            .context("Failed to join trigger manager interpreter thread")?;
 
         log::info!("stop complete");
 
