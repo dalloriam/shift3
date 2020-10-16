@@ -3,7 +3,8 @@ use std::fmt;
 use std::mem;
 
 use google_datastore1::{
-    CommitRequest, Datastore, KindExpression, Mutation, Query, RunQueryRequest,
+    CommitRequest, Datastore, Filter, KindExpression, Mutation, PropertyFilter, PropertyReference,
+    Query, RunQueryRequest, Value,
 };
 
 use hyper::Client;
@@ -180,6 +181,68 @@ impl DatastoreClient {
         }
 
         Ok(results)
+    }
+
+    /// Get an entity by its id.
+    pub fn get<T>(&self, id: u64) -> Result<Option<T>>
+    where
+        T: DatastoreEntity,
+    {
+        let query = Query {
+            kind: Some(vec![KindExpression {
+                name: Some(String::from(T::get_kind())),
+            }]),
+            filter: Some(Filter {
+                property_filter: Some({
+                    PropertyFilter {
+                        property: Some(PropertyReference {
+                            name: Some(String::from("id")),
+                        }),
+                        value: Some(Value {
+                            integer_value: Some(id.to_string()),
+                            ..Default::default()
+                        }),
+                        op: Some(String::from("EQUAL")),
+                    }
+                }),
+                ..Default::default()
+            }),
+            offset: Some(0),
+            limit: Some(1),
+            ..Default::default()
+        };
+
+        let (_resp, r) = self
+            .hub
+            .projects()
+            .run_query(
+                RunQueryRequest {
+                    query: Some(query),
+                    ..Default::default()
+                },
+                &self.project_id,
+            )
+            .doit()
+            .map_err(|e| DatastoreError::QueryFailed {
+                message: e.to_string(),
+            })?;
+
+        let batch = r.batch.ok_or(DatastoreError::IncompleteData)?;
+        let entities = batch.entity_results.ok_or(DatastoreError::IncompleteData)?;
+
+        let mut results = Vec::new();
+        for entity_result in entities.into_iter() {
+            let entity = entity_result.entity.ok_or(DatastoreError::IncompleteData)?;
+            let user_type = T::from_entity(DSEntity::try_from(entity).context(BadEntity)?);
+            results.push(user_type);
+        }
+
+        if results.is_empty() {
+            Ok(None)
+        } else {
+            // Only keep the first element
+            Ok(Some(results.remove(0)))
+        }
     }
 }
 

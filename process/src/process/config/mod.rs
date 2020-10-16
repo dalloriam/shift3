@@ -1,3 +1,5 @@
+mod executor;
+mod interpreter;
 mod trigger;
 
 use anyhow::Result;
@@ -15,12 +17,16 @@ pub struct Configuration {
 #[serde(tag = "type")]
 pub enum SystemConfiguration {
     Trigger(trigger::TriggerSystemConfiguration),
+    Interpreter(interpreter::TriggerInterpreterConfiguration),
+    Executor(executor::ExecutorSystemConfiguration),
 }
 
 impl SystemConfiguration {
     pub fn into_instance(self) -> Result<Service> {
         match self {
             SystemConfiguration::Trigger(cfg) => cfg.into_instance(),
+            SystemConfiguration::Interpreter(cfg) => cfg.into_instance(),
+            SystemConfiguration::Executor(cfg) => cfg.into_instance(),
         }
     }
 }

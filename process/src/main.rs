@@ -51,7 +51,7 @@ fn main_loop(config_file_path: &PathBuf) -> Result<()> {
 )]
 pub struct CLIMain {
     /// Path to the node configuration file.
-    #[clap(short = "c", long = "cfg")]
+    #[clap(short = 'c', long = "cfg")]
     cfg: PathBuf,
 }
 
