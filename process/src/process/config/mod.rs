@@ -39,8 +39,10 @@ impl SystemConfiguration {
 
 #[cfg(test)]
 mod tests {
-
     use std::path::PathBuf;
+    use std::sync::Arc;
+
+    use plugin_host::PluginHost;
 
     use super::trigger::{
         ConfigReaderConfiguration, QueueWriterConfiguration, TriggerSystemConfiguration,
@@ -58,6 +60,6 @@ mod tests {
             },
         });
 
-        cfg.into_instance().unwrap();
+        cfg.into_instance(Arc::new(PluginHost::default())).unwrap();
     }
 }

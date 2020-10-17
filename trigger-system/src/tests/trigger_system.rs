@@ -3,22 +3,27 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time;
 
+use plugin_host::PluginHost;
+
 use protocol::{Trigger, TriggerConfiguration};
 
 use serde_json::json;
 
 use tempdir::TempDir;
 
-use crate::system::TriggerSystem;
+use crate::system::{TriggerSystem, TriggerSystemConfig};
 
+use super::dir_watch::DirectoryWatcher;
 use super::mock;
 
 #[test]
 fn basic_test() {
-    let sys = TriggerSystem::start(
-        Box::from(mock::Dummy::default()),
-        Box::new(mock::Dummy::default()),
-    );
+    let cfg = TriggerSystemConfig {
+        config_loader: Box::from(mock::Dummy::default()),
+        queue_writer: Box::from(mock::Dummy::default()),
+        plugin_host: Arc::new(PluginHost::default()),
+    };
+    let sys = TriggerSystem::start(cfg);
     sys.terminate().unwrap();
 }
 
@@ -34,10 +39,19 @@ fn in_memory_full_loop() {
         data: serde_json::to_string(&json!({ "directory": watched_dir_path })).unwrap(),
     };
 
-    let cfg_loader = Box::from(mock::InMemoryConfigLoader::new(vec![trigger_config]));
+    let config_loader = Box::from(mock::InMemoryConfigLoader::new(vec![trigger_config]));
     let queue_writer = Box::from(Arc::new(Mutex::new(mock::InMemoryQueueWriter::new())));
 
-    let system = TriggerSystem::start(cfg_loader, queue_writer.clone());
+    let mut plugin_host = PluginHost::default();
+    plugin_host.add_in_memory_trigger_plugin(Box::new(DirectoryWatcher::default()));
+
+    let cfg = TriggerSystemConfig {
+        config_loader,
+        queue_writer: queue_writer.clone(),
+        plugin_host: Arc::new(plugin_host),
+    };
+
+    let system = TriggerSystem::start(cfg);
 
     thread::sleep(time::Duration::from_millis(100)); // Give the system a chance to boot.
 

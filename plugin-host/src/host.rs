@@ -55,9 +55,13 @@ impl PluginHandle {
     }
 }
 
+#[derive(Default)]
 pub struct PluginHost {
     loaded_plugins: Vec<PluginHandle>,
     search_paths: Vec<PathBuf>,
+
+    in_memory_action_plugins: Vec<Arc<Box<dyn ActionPlugin>>>,
+    in_memory_trigger_plugins: Vec<Arc<Box<dyn TriggerPlugin>>>,
 }
 
 impl PluginHost {
@@ -65,6 +69,9 @@ impl PluginHost {
         let mut host = PluginHost {
             loaded_plugins: Vec::new(),
             search_paths: Vec::from(search_paths),
+
+            in_memory_action_plugins: Vec::new(),
+            in_memory_trigger_plugins: Vec::new(),
         };
 
         host.search()?;
@@ -72,11 +79,20 @@ impl PluginHost {
         Ok(host)
     }
 
-    fn add_plugin<P: AsRef<Path>>(&mut self, library_path: P) -> Result<()> {
+    pub fn add_plugin<P: AsRef<Path>>(&mut self, library_path: P) -> Result<()> {
         let plug_handle = PluginHandle::load(library_path.as_ref())?;
         self.loaded_plugins.push(plug_handle);
         log::info!("loaded plugin: {}", library_path.as_ref().display());
         Ok(())
+    }
+
+    pub fn add_in_memory_action_plugin(&mut self, action_plugin: Box<dyn ActionPlugin>) {
+        self.in_memory_action_plugins.push(Arc::new(action_plugin));
+    }
+
+    pub fn add_in_memory_trigger_plugin(&mut self, trigger_plugin: Box<dyn TriggerPlugin>) {
+        self.in_memory_trigger_plugins
+            .push(Arc::new(trigger_plugin));
     }
 
     fn search(&mut self) -> Result<()> {
@@ -106,7 +122,7 @@ impl PluginHost {
     }
 
     pub fn get_action_plugins(&self) -> Vec<Arc<Box<dyn ActionPlugin>>> {
-        let mut v: Vec<Arc<Box<dyn ActionPlugin>>> = Vec::new();
+        let mut v: Vec<Arc<Box<dyn ActionPlugin>>> = self.in_memory_action_plugins.clone();
 
         for plug_handle in self.loaded_plugins.iter() {
             for action_plug in plug_handle.plugin.actions.iter() {
@@ -118,7 +134,7 @@ impl PluginHost {
     }
 
     pub fn get_trigger_plugins(&self) -> Vec<Arc<Box<dyn TriggerPlugin>>> {
-        let mut v: Vec<Arc<Box<dyn TriggerPlugin>>> = Vec::new();
+        let mut v: Vec<Arc<Box<dyn TriggerPlugin>>> = self.in_memory_trigger_plugins.clone();
 
         for plug_handle in self.loaded_plugins.iter() {
             for trigger_plug in plug_handle.plugin.triggers.iter() {
