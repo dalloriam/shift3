@@ -18,29 +18,31 @@ pub struct ExecutorManager {
     plugin_host: Arc<PluginHost>,
 }
 
-impl<'a> ExecutorManager {
+impl ExecutorManager {
     pub fn new(
         stop_rx: mpsc::Receiver<()>,
         manifest_reader: BoxedQueueReader,
         plugin_host: Arc<PluginHost>,
     ) -> Result<Self> {
-        let mut hsh: HashMap<String, Arc<Box<dyn ActionPlugin>>> = HashMap::new();
-        for action_plugin in plugin_host.get_action_plugins() {
-            let action_name = String::from(action_plugin.get_type());
-            hsh.insert(action_name, action_plugin.clone());
-        }
-
         let mut manager = ExecutorManager {
             manifest_reader,
             stop_rx,
-            executors: hsh,
+            executors: HashMap::new(),
             plugin_host,
         };
+
+        manager.refresh_plugins();
 
         Ok(manager)
     }
 
-    pub fn load_executors(&'a mut self) -> Result<()> {
+    fn refresh_plugins(&mut self) -> Result<()> {
+        self.executors.clear();
+        for action_plugin in self.plugin_host.get_action_plugins() {
+            let action_name = String::from(action_plugin.get_type());
+            self.executors.insert(action_name, action_plugin.clone());
+        }
+
         Ok(())
     }
 

@@ -7,7 +7,7 @@ mod system;
 
 // Public interface.
 pub use interface::{TriggerConfigLoader, TriggerQueueWriter};
-pub use system::TriggerSystem;
+pub use system::{TriggerSystem, TriggerSystemConfig};
 
 type BoxedCfgLoader = Box<dyn TriggerConfigLoader + Send>;
 type BoxedQueueWriter = Box<dyn TriggerQueueWriter + Send>;

@@ -9,5 +9,6 @@ members = [
     "toolkit",
     "plugin-core",
     "plugin-host",
+    "plugin-builtins/directory_watch",
     "plugin-builtins/notify"
 ]

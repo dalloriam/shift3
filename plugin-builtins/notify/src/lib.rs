@@ -1,4 +1,3 @@
-use std::io;
 use std::process::Command;
 
 use plugin_core::{ActionPlugin, Error, Plugin};

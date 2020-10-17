@@ -25,10 +25,7 @@ impl ExecutorSystem {
         let sys = Self {
             handle: StoppableThread::spawn(move |stop_rx| {
                 match ExecutorManager::new(stop_rx, cfg.queue_reader, cfg.plugin_host) {
-                    Ok(mut e) => {
-                        e.load_executors().unwrap();
-                        e.start()
-                    }
+                    Ok(mut e) => e.start(),
                     Err(err) => log::error!("failed to start the manager: {:?}", err),
                 }
             }),
