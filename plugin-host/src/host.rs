@@ -31,8 +31,8 @@ type Result<T> = std::result::Result<T, Error>;
 
 struct PluginHandle {
     plugin: Plugin,
-    library: Library,
-    path: PathBuf,
+    _library: Library,
+    _path: PathBuf,
 }
 
 impl PluginHandle {
@@ -49,8 +49,8 @@ impl PluginHandle {
 
         Ok(PluginHandle {
             plugin: *plugin_box,
-            library,
-            path: PathBuf::from(library_path.as_ref()),
+            _library: library,
+            _path: PathBuf::from(library_path.as_ref()),
         })
     }
 }

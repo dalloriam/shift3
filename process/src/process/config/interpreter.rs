@@ -27,7 +27,7 @@ pub struct TriggerInterpreterConfiguration {
 
 impl TriggerInterpreterConfiguration {
     /// Converts the trigger interpreter configuration to a usable service instance.
-    pub fn into_instance(self, plugin_host: Arc<PluginHost>) -> Result<Service> {
+    pub fn into_instance(self, _plugin_host: Arc<PluginHost>) -> Result<Service> {
         let cfg_reader = self.config_reader.into_instance()?;
         let queue_writer = self.queue_writer.into_instance()?;
         let queue_reader = self.queue_reader.into_instance()?;

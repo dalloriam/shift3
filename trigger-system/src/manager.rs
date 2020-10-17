@@ -5,12 +5,11 @@ use std::time;
 
 use anyhow::{ensure, Result};
 
-use plugin_core::{Error as PluginError, TriggerPlugin};
+use plugin_core::TriggerPlugin;
 use plugin_host::PluginHost;
 
 use protocol::TriggerConfiguration;
 
-use crate::exec::{load_executors, ExecutorObj};
 use crate::{BoxedCfgLoader, BoxedQueueWriter};
 
 const EXIT_POLL_FREQUENCY: time::Duration = time::Duration::from_millis(100);

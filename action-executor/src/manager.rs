@@ -31,7 +31,7 @@ impl ExecutorManager {
             plugin_host,
         };
 
-        manager.refresh_plugins();
+        manager.refresh_plugins()?;
 
         Ok(manager)
     }

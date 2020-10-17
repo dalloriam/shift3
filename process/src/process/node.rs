@@ -8,7 +8,7 @@ use crate::{Configuration, Service};
 
 /// A single process node.
 pub struct Node {
-    plugin_host: Arc<PluginHost>,
+    _plugin_host: Arc<PluginHost>, // TODO: This handle will  be needed for the persistence API.
     services: Vec<Service>,
 }
 
@@ -31,7 +31,7 @@ impl Node {
             .collect();
 
         Ok(Node {
-            plugin_host,
+            _plugin_host: plugin_host,
             services: services?,
         })
     }
