@@ -30,9 +30,9 @@ pub enum SystemConfiguration {
 impl SystemConfiguration {
     pub fn into_instance(self, host: Arc<PluginHost>) -> Result<Service> {
         match self {
-            SystemConfiguration::Trigger(cfg) => cfg.into_instance(host.clone()),
-            SystemConfiguration::Interpreter(cfg) => cfg.into_instance(host.clone()),
-            SystemConfiguration::Executor(cfg) => cfg.into_instance(host.clone()),
+            SystemConfiguration::Trigger(cfg) => cfg.into_instance(host),
+            SystemConfiguration::Interpreter(cfg) => cfg.into_instance(host),
+            SystemConfiguration::Executor(cfg) => cfg.into_instance(host),
         }
     }
 }

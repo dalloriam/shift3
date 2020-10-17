@@ -18,8 +18,8 @@ pub struct Plugin {
 impl Plugin {
     pub fn new(actions: Vec<Box<dyn ActionPlugin>>, triggers: Vec<Box<dyn TriggerPlugin>>) -> Self {
         Plugin {
-            actions: actions.into_iter().map(|a| Arc::new(a)).collect(),
-            triggers: triggers.into_iter().map(|a| Arc::new(a)).collect(),
+            actions: actions.into_iter().map(Arc::new).collect(),
+            triggers: triggers.into_iter().map(Arc::new).collect(),
         }
     }
 }
