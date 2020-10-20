@@ -19,13 +19,15 @@ serde_json = "1.0"
 tempdir = "0.3"
 
 [dependencies]
+action-executor = {path = "../action-executor"}
 anyhow = "1.0"
-clap = "3.0.0-beta.1"
+clap = "3.0.0-beta.2"
 ctrlc = "3.1"
-env_logger = "0.7"
+env_logger = "0.8"
 gcloud = {path = "../gcloud"}
 log = "0.4"
 polyglot = {version = "0.2.1", features = ["json_fmt", "toml_fmt", "yaml_fmt"]}
 serde = {version = "1.0", features = ["derive"]}
 toolkit = {path = "../toolkit"}
 trigger-system = {path = "../trigger-system"}
+trigger-interpreter = {path = "../trigger-interpreter"}

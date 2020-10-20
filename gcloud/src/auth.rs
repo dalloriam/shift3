@@ -6,7 +6,7 @@ use hyper::Client;
 
 use snafu::{ResultExt, Snafu};
 
-use yup_oauth2::{GetToken, ServiceAccountAccess, Token};
+use yup_oauth2::{GetToken, ServiceAccountAccess, ServiceAccountKey, Token};
 
 use crate::https;
 
@@ -27,7 +27,17 @@ type Result<T> = std::result::Result<T, AuthError>;
 /// It requires less boilerplate than the bare `yup_oauth2` provider, and it implements
 /// the `oauth::GetToken` trait, which means it can be used directly with Pubsub & Datastore clients.
 pub struct AuthProvider {
+    secret: ServiceAccountKey,
     access_manager: ServiceAccountAccess<Client>,
+}
+
+impl Clone for AuthProvider {
+    fn clone(&self) -> Self {
+        AuthProvider {
+            secret: self.secret.clone(),
+            access_manager: ServiceAccountAccess::new(self.secret.clone(), https::new_tls_client()),
+        }
+    }
 }
 
 impl AuthProvider {
@@ -43,9 +53,12 @@ impl AuthProvider {
         let secret = yup_oauth2::service_account_key_from_file(&path_str)
             .context(FailedToReadServiceAccountKey)?;
 
-        let access_manager = ServiceAccountAccess::new(secret, https::new_tls_client());
+        let access_manager = ServiceAccountAccess::new(secret.clone(), https::new_tls_client());
 
-        Ok(AuthProvider { access_manager })
+        Ok(AuthProvider {
+            secret,
+            access_manager,
+        })
     }
 }
 

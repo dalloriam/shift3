@@ -2,9 +2,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::RuleID;
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 pub struct ActionManifest {
-    rule: RuleID,
-    action_type: String,
-    data: Vec<u8>,
+    pub rule: RuleID,
+    pub action_type: String,
+    pub data: String,
 }
