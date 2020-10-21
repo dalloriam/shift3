@@ -20,7 +20,7 @@ fn plugin_loading() {
 
     // Create a plugin host.
     let search_paths = vec![PathBuf::from(temp_dir.path())];
-    let mut host = PluginHost::initialize(&search_paths).unwrap();
+    let host = PluginHost::initialize(&search_paths).unwrap();
     assert_eq!(host.get_action_plugins().len(), 0);
     assert_eq!(host.get_trigger_plugins().len(), 1);
 }
