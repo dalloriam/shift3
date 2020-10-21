@@ -97,6 +97,8 @@ impl PluginHost {
 
     fn search(&mut self) -> Result<()> {
         log::info!("beginning plugin refresh");
+        self.loaded_plugins.clear();
+
         let paths_copy = self.search_paths.clone();
 
         for path in paths_copy.into_iter() {
