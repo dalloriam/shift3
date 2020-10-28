@@ -1,6 +1,9 @@
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use anyhow::Result;
+
+use plugin_host::PluginHost;
 
 use serde::{Deserialize, Serialize};
 
@@ -9,7 +12,7 @@ use crate::Service;
 use trigger_system::{
     iface_impl::config::{datastore::DatastoreTriggerConfigLoader, file::FileTriggerConfigLoader},
     iface_impl::trigger_writer::{DirectoryTriggerQueueWriter, PubsubTriggerQueueWriter},
-    TriggerConfigLoader, TriggerQueueWriter, TriggerSystem,
+    TriggerConfigLoader, TriggerQueueWriter, TriggerSystem, TriggerSystemConfig,
 };
 
 /// Configuration struct of the trigger system.
@@ -21,10 +24,14 @@ pub struct TriggerSystemConfiguration {
 
 impl TriggerSystemConfiguration {
     /// Converts the trigger system configuration to a usable service instance.
-    pub fn into_instance(self) -> Result<Service> {
-        let cfg_loader = self.config_reader.into_instance()?;
+    pub fn into_instance(self, plugin_host: Arc<PluginHost>) -> Result<Service> {
+        let config_loader = self.config_reader.into_instance()?;
         let queue_writer = self.queue_writer.into_instance()?;
-        Ok(Box::from(TriggerSystem::start(cfg_loader, queue_writer)))
+        Ok(Box::from(TriggerSystem::start(TriggerSystemConfig {
+            config_loader,
+            queue_writer,
+            plugin_host,
+        })))
     }
 }
 

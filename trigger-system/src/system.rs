@@ -1,9 +1,19 @@
+use std::sync::Arc;
+
 use anyhow::{Context, Error, Result};
+
+use plugin_host::PluginHost;
 
 use toolkit::{thread::StoppableThread, Stop};
 
 use crate::manager::TriggerManager;
 use crate::{BoxedCfgLoader, BoxedQueueWriter};
+
+pub struct TriggerSystemConfig {
+    pub config_loader: BoxedCfgLoader,
+    pub queue_writer: BoxedQueueWriter,
+    pub plugin_host: Arc<PluginHost>,
+}
 
 /// The trigger system manages the operation of the trigger service.
 /// It manages its own threads and resources.
@@ -13,12 +23,17 @@ pub struct TriggerSystem {
 
 impl TriggerSystem {
     /// Creates a new trigger system.
-    pub fn start(cfg_loader: BoxedCfgLoader, queue_writer: BoxedQueueWriter) -> Self {
+    pub fn start(cfg: TriggerSystemConfig) -> Self {
         log::debug!("starting system");
 
         let sys = Self {
             handle: StoppableThread::spawn(move |stop_rx| {
-                match TriggerManager::new(stop_rx, cfg_loader, queue_writer) {
+                match TriggerManager::new(
+                    stop_rx,
+                    cfg.config_loader,
+                    cfg.queue_writer,
+                    cfg.plugin_host,
+                ) {
                     Ok(mut man) => man.start(),
                     Err(e) => log::error!("failed to start manager: {:?}", e),
                 }

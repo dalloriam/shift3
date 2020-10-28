@@ -2,15 +2,22 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time;
 
+use plugin_host::PluginHost;
+
 use protocol::ActionManifest;
 
-use crate::system::ExecutorSystem;
+use crate::system::{ExecutorSystem, ExecutorSystemConfig};
 
 use super::mock;
 
 #[test]
 fn basic_test() {
-    let sys = ExecutorSystem::start(Box::from(mock::Dummy::default()));
+    let cfg = ExecutorSystemConfig {
+        queue_reader: Box::from(mock::Dummy::default()),
+        plugin_host: Arc::new(PluginHost::default()),
+    };
+
+    let sys = ExecutorSystem::start(cfg);
     sys.terminate().unwrap();
 }
 
@@ -28,7 +35,11 @@ fn in_memory_full_loop() {
         });
     }
 
-    let sys = ExecutorSystem::start(queue_reader.clone());
+    let cfg = ExecutorSystemConfig {
+        queue_reader: queue_reader.clone(),
+        plugin_host: Arc::new(PluginHost::default()),
+    };
+    let sys = ExecutorSystem::start(cfg);
     thread::sleep(time::Duration::from_millis(100)); // Give the system a chance to boot.
 
     sys.terminate().unwrap();

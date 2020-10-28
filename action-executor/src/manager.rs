@@ -1,39 +1,60 @@
 use std::collections::HashMap;
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc};
 
 use anyhow::Result;
 
-use crate::{
-    exec::{load_executors, ExecutorObj},
-    BoxedQueueReader,
-};
+use plugin_core::{ActionPlugin, Error as PluginError};
+use plugin_host::PluginHost;
+
+use crate::BoxedQueueReader;
 
 pub struct ExecutorManager {
     manifest_reader: BoxedQueueReader,
 
     stop_rx: mpsc::Receiver<()>,
 
-    executors: HashMap<String, ExecutorObj>,
+    executors: HashMap<String, Arc<Box<dyn ActionPlugin>>>,
+
+    plugin_host: Arc<PluginHost>,
 }
 
 impl ExecutorManager {
-    pub fn new(stop_rx: mpsc::Receiver<()>, manifest_reader: BoxedQueueReader) -> Result<Self> {
-        Ok(ExecutorManager {
+    pub fn new(
+        stop_rx: mpsc::Receiver<()>,
+        manifest_reader: BoxedQueueReader,
+        plugin_host: Arc<PluginHost>,
+    ) -> Result<Self> {
+        let mut manager = ExecutorManager {
             manifest_reader,
             stop_rx,
-            executors: load_executors()?,
-        })
+            executors: HashMap::new(),
+            plugin_host,
+        };
+
+        manager.refresh_plugins()?;
+
+        Ok(manager)
+    }
+
+    fn refresh_plugins(&mut self) -> Result<()> {
+        self.executors.clear();
+        for action_plugin in self.plugin_host.get_action_plugins() {
+            let action_name = String::from(action_plugin.get_type());
+            self.executors.insert(action_name, action_plugin.clone());
+        }
+
+        Ok(())
     }
 
     fn pull_cycle(&mut self) -> Result<()> {
         let mut ack_ids = Vec::with_capacity(10); // TODO: Match batch size.
-        let mut res: Result<()> = Ok(());
+        let mut res: Result<(), PluginError> = Ok(());
 
         for (ack_id, action_manifest) in self.manifest_reader.pull_action_manifests()? {
             log::debug!("got manifest: {:?}", action_manifest);
 
             if let Some(ex) = self.executors.get(&action_manifest.action_type) {
-                res = ex.execute(action_manifest);
+                res = ex.execute_action(action_manifest);
                 if res.is_err() {
                     break;
                 }
@@ -48,11 +69,13 @@ impl ExecutorManager {
             self.manifest_reader.batch_ack(ack_ids)?;
         }
 
-        res
+        res?;
+        Ok(())
     }
 
     pub fn start(&mut self) {
         log::debug!("executor loop running");
+
         loop {
             if let Err(e) = self.pull_cycle() {
                 log::error!("{:?}", e);

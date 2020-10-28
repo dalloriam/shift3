@@ -1,13 +1,15 @@
 use std::collections::HashMap;
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc};
 use std::thread;
 use std::time;
 
 use anyhow::{ensure, Result};
 
+use plugin_core::TriggerPlugin;
+use plugin_host::PluginHost;
+
 use protocol::TriggerConfiguration;
 
-use crate::exec::{load_executors, ExecutorObj};
 use crate::{BoxedCfgLoader, BoxedQueueWriter};
 
 const EXIT_POLL_FREQUENCY: time::Duration = time::Duration::from_millis(100);
@@ -22,7 +24,9 @@ pub struct TriggerManager {
     configs: Vec<TriggerConfiguration>,
     last_config_update: time::Instant,
 
-    executors: HashMap<String, ExecutorObj>,
+    executors: HashMap<String, Arc<Box<dyn TriggerPlugin>>>,
+
+    plugin_host: Arc<PluginHost>,
 }
 
 impl TriggerManager {
@@ -30,10 +34,11 @@ impl TriggerManager {
         stop_rx: mpsc::Receiver<()>,
         cfg_loader: BoxedCfgLoader,
         queue_writer: BoxedQueueWriter,
+        plugin_host: Arc<PluginHost>,
     ) -> Result<Self> {
         let configs = cfg_loader.get_all_configurations()?;
 
-        Ok(TriggerManager {
+        let mut manager = TriggerManager {
             cfg_loader,
             queue_writer,
             stop_rx,
@@ -41,8 +46,23 @@ impl TriggerManager {
             configs,
             last_config_update: time::Instant::now(),
 
-            executors: load_executors()?,
-        })
+            executors: HashMap::new(),
+            plugin_host,
+        };
+
+        manager.refresh_plugins()?;
+
+        Ok(manager)
+    }
+
+    fn refresh_plugins(&mut self) -> Result<()> {
+        self.executors.clear();
+        for trigger_plugin in self.plugin_host.get_trigger_plugins() {
+            let trigger_name = String::from(trigger_plugin.get_type());
+            self.executors.insert(trigger_name, trigger_plugin.clone());
+        }
+
+        Ok(())
     }
 
     fn execute_trigger(&mut self, cfg: &TriggerConfiguration) -> Result<()> {
@@ -56,7 +76,7 @@ impl TriggerManager {
         );
 
         // unwrap is safe because of ensure()
-        for trigger in executor_maybe.unwrap().execute(&cfg)? {
+        for trigger in executor_maybe.unwrap().pull_trigger(cfg)? {
             self.queue_writer.push_trigger(trigger)?;
         }
         Ok(())

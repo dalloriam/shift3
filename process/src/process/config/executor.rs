@@ -1,9 +1,14 @@
+use std::sync::Arc;
+
 use anyhow::Result;
+
+use plugin_host::PluginHost;
 
 use serde::{Deserialize, Serialize};
 
 use action_executor::{
     iface_impl::PubsubActionManifestQueueReader, ActionManifestQueueReader, ExecutorSystem,
+    ExecutorSystemConfig,
 };
 
 use crate::Service;
@@ -14,10 +19,12 @@ pub struct ExecutorSystemConfiguration {
 }
 
 impl ExecutorSystemConfiguration {
-    pub fn into_instance(self) -> Result<Service> {
+    pub fn into_instance(self, plugin_host: Arc<PluginHost>) -> Result<Service> {
         let queue_reader = self.queue_reader.into_instance()?;
-
-        Ok(Box::from(ExecutorSystem::start(queue_reader)))
+        Ok(Box::from(ExecutorSystem::start(ExecutorSystemConfig {
+            queue_reader,
+            plugin_host,
+        })))
     }
 }
 

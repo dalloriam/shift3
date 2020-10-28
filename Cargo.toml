@@ -6,5 +6,9 @@ members = [
     "trigger-system",
     "process",
     "protocol",
-    "toolkit"
+    "toolkit",
+    "plugin-core",
+    "plugin-host",
+    "plugin-builtins/directory_watch",
+    "plugin-builtins/notify"
 ]

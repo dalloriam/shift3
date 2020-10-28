@@ -1,18 +1,16 @@
 [package]
-name = "action-executor"
+name = "plugin-host"
 version = "0.1.0"
 authors = ["William Dussault <dalloriam@gmail.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[dev-dependencies]
+tempfile = "3"
+
 [dependencies]
-anyhow = "1"
-gcloud = {path = "../gcloud"}
+libloading = "0.6"
 log = "0.4"
 plugin-core = {path = "../plugin-core"}
-plugin-host = {path = "../plugin-host"}
-protocol = {path = "../protocol"}
-serde = { version = "1", features = ["derive"] }
-serde_json = "1.0"
-toolkit = {path = "../toolkit"}
+snafu = "0.6"
