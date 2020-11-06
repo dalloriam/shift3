@@ -4,7 +4,7 @@ use std::{
 };
 
 use anyhow::{ensure, Error, Result};
-use gcloud::{pub_sub::PubSubClient, AuthProvider};
+use gcloud::{pub_sub::Message, pub_sub::PubSubClient, AuthProvider};
 use glob::glob;
 use protocol::Trigger;
 
@@ -37,14 +37,14 @@ impl PubSubTriggerReader {
     }
 }
 
-impl Clone for Box<dyn TriggerQueueReader + Send> {
-    fn clone(&self) -> Box<dyn TriggerQueueReader + Send> {
+impl Clone for Box<dyn TriggerQueueReader> {
+    fn clone(&self) -> Box<dyn TriggerQueueReader> {
         self.box_clone()
     }
 }
 
 impl TriggerQueueReader for PubSubTriggerReader {
-    fn box_clone(&self) -> Box<dyn TriggerQueueReader + Send> {
+    fn box_clone(&self) -> Box<dyn TriggerQueueReader> {
         Box::new(PubSubTriggerReader {
             client: PubSubClient::new(self.project_id.clone(), self.authenticator.clone()),
             subscription_id: self.subscription_id.clone(),
@@ -53,21 +53,13 @@ impl TriggerQueueReader for PubSubTriggerReader {
         })
     }
 
-    fn pull_trigger(&self) -> Result<Vec<(String, Trigger)>> {
+    fn pull_trigger(&self) -> Result<Vec<Message<Trigger>>> {
         let result = self
             .client
             .pull(self.subscription_id.as_str(), 10) // TODO: Use config instead of hardcoded value
             .map_err(|ds| Error::msg(format!("{:?}", ds)))?;
 
         Ok(result)
-    }
-
-    fn acknowlege(&self, ack_ids: Vec<String>) -> Result<()> {
-        self.client
-            .acknowledge(ack_ids, self.subscription_id.as_str())
-            .map_err(|ds| Error::msg(format!("{:?}", ds)))?;
-
-        Ok(())
     }
 }
 
@@ -110,13 +102,9 @@ impl TriggerQueueReader for FileTriggerQueueReader {
         Ok(rules)
     }
 
-    fn box_clone(&self) -> Box<dyn TriggerQueueReader + Send> {
+    fn box_clone(&self) -> Box<dyn TriggerQueueReader> {
         Box::new(FileTriggerQueueReader {
             path: self.path.clone(),
         })
-    }
-
-    fn acknowlege(&self, _: Vec<String>) -> Result<()> {
-        Ok(())
     }
 }

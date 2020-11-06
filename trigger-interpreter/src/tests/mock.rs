@@ -35,7 +35,7 @@ impl TriggerQueueReader for Dummy {
         Ok(Vec::new())
     }
 
-    fn acknowlege(&self, _: Vec<String>) -> Result<(), Error> {
+    fn acknowledge(&self, _: Vec<String>) -> Result<(), Error> {
         Ok(())
     }
 
@@ -91,7 +91,7 @@ impl TriggerQueueReader for InMemoryQueueReader {
         Ok(vec)
     }
 
-    fn acknowlege(&self, ack_ids: Vec<String>) -> Result<(), Error> {
+    fn acknowledge(&self, ack_ids: Vec<String>) -> Result<(), Error> {
         let mut guard = self.queue.lock().unwrap(); // We won't get poisoning in a simple test.
         let queue_handle = &mut *guard;
 

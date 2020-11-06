@@ -1,4 +1,6 @@
 //! Simple wrapper for interacting with google pubsub.
+use std::sync::Arc;
+
 use google_pubsub1::Pubsub;
 
 use serde::{de, Serialize};
@@ -36,7 +38,7 @@ type Result<T> = std::result::Result<T, PubSubError>;
 
 /// Google Cloud Pub/Sub client
 pub struct PubSubClient {
-    pubsub_connection: Pubsub<hyper::Client, AuthProvider>,
+    pubsub_connection: Arc<Pubsub<hyper::Client, AuthProvider>>,
     auth_provider: AuthProvider,
     project_id: String,
 }
@@ -44,7 +46,10 @@ pub struct PubSubClient {
 impl Clone for PubSubClient {
     fn clone(&self) -> Self {
         PubSubClient {
-            pubsub_connection: Pubsub::new(https::new_tls_client(), self.auth_provider.clone()),
+            pubsub_connection: Arc::new(Pubsub::new(
+                https::new_tls_client(),
+                self.auth_provider.clone(),
+            )),
             auth_provider: self.auth_provider.clone(),
             project_id: self.project_id.clone(),
         }
@@ -54,7 +59,7 @@ impl Clone for PubSubClient {
 impl PubSubClient {
     /// Creates a new client using a project identifier and an authentication provider.
     pub fn new(project_id: String, auth_provider: AuthProvider) -> PubSubClient {
-        let pub_sub = Pubsub::new(https::new_tls_client(), auth_provider.clone());
+        let pub_sub = Arc::new(Pubsub::new(https::new_tls_client(), auth_provider.clone()));
 
         PubSubClient {
             auth_provider,
@@ -96,29 +101,6 @@ impl PubSubClient {
         Ok(())
     }
 
-    /// Acknowledges the reception of a or multiple messages from a Pub/Sub subscription.
-    pub fn acknowledge(&self, ack_ids: Vec<String>, subscription: &str) -> Result<()> {
-        let acknowledge_request = google_pubsub1::AcknowledgeRequest {
-            ack_ids: Some(ack_ids),
-        };
-
-        self.pubsub_connection
-            .projects()
-            .subscriptions_acknowledge(
-                acknowledge_request,
-                &format!(
-                    "projects/{}/subscriptions/{}",
-                    self.project_id, subscription
-                ),
-            )
-            .doit()
-            .map_err(|e| PubSubError::FailedToAcknowledgeMessage {
-                message: e.to_string(),
-            })?;
-
-        Ok(())
-    }
-
     /// Pulls N entities from a Pub/Sub subscription.
     ///
     /// The function allows to pull JSON deserializable entities from a Pub/Sub subscription.
@@ -128,7 +110,7 @@ impl PubSubClient {
         &self,
         subscription: &str,
         max_batch_size: i32,
-    ) -> Result<Vec<(String, Entity)>>
+    ) -> Result<Vec<Message<Entity>>>
     where
         Entity: de::DeserializeOwned,
     {
@@ -153,7 +135,7 @@ impl PubSubClient {
             })?;
 
         if let Some(received_messages) = pull_resp.received_messages {
-            let mut entities: Vec<(String, Entity)> = Vec::new();
+            let mut entities: Vec<Message<Entity>> = Vec::new();
 
             for received_message in received_messages {
                 let message = received_message
@@ -169,7 +151,13 @@ impl PubSubClient {
                     let entity: Entity =
                         serde_json::from_slice(&decoded).context(FailedToDeserializeDataStruct)?;
 
-                    entities.push((id, entity));
+                    entities.push(Message {
+                        pubsub_connection: self.pubsub_connection.clone(),
+                        entity,
+                        id,
+                        project_id: self.project_id.clone(),
+                        subscription: subscription.to_string(),
+                    });
                 }
             }
 
@@ -177,5 +165,38 @@ impl PubSubClient {
         } else {
             Ok(Vec::new())
         }
+    }
+}
+
+pub struct Message<E> {
+    id: String,
+    subscription: String,
+    project_id: String,
+    pubsub_connection: Arc<Pubsub<hyper::Client, AuthProvider>>,
+    pub entity: E,
+}
+
+impl<E> Message<E> {
+    /// Acknowledges the reception of a or multiple messages from a Pub/Sub subscription.
+    pub fn acknowledge(&self) -> Result<()> {
+        let acknowledge_request = google_pubsub1::AcknowledgeRequest {
+            ack_ids: Some(vec![self.id.to_owned()]),
+        };
+
+        self.pubsub_connection
+            .projects()
+            .subscriptions_acknowledge(
+                acknowledge_request,
+                &format!(
+                    "projects/{}/subscriptions/{}",
+                    self.project_id, self.subscription
+                ),
+            )
+            .doit()
+            .map_err(|e| PubSubError::FailedToAcknowledgeMessage {
+                message: e.to_string(),
+            })?;
+
+        Ok(())
     }
 }

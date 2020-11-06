@@ -61,8 +61,8 @@ impl TriggerManager {
         let mut ack_ids = Vec::with_capacity(10);
         let mut result: Result<(), Error> = Ok(());
 
-        for (id, trigger) in triggers {
-            if let Err(err) = self.interpret_trigger(trigger) {
+        for message in triggers {
+            if let Err(err) = self.interpret_trigger(message.entity) {
                 result = Err(err);
                 break;
             }
@@ -71,7 +71,7 @@ impl TriggerManager {
         }
 
         if !ack_ids.is_empty() {
-            self.queue_reader.acknowlege(ack_ids)?;
+            self.queue_reader.acknowledge(ack_ids)?;
         }
 
         result
