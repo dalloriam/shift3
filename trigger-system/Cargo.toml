@@ -11,8 +11,11 @@ tempdir = "0.3"
 
 [dependencies]
 anyhow = "1.0"
+async-std = "1.7"
+async-trait = "0.1"
 log = "0.4"
 gcloud = {path = "../gcloud"}
+google-cloud = {version = "0.1", features = ["datastore", "pubsub"]}
 plugin-core = {path = "../plugin-core"}
 plugin-host = {path = "../plugin-host"}
 protocol = {path = "../protocol"}

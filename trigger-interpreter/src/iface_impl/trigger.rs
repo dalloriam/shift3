@@ -3,12 +3,24 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{ensure, Error, Result};
-use gcloud::{pub_sub::PubSubClient, AuthProvider};
+use anyhow::{ensure, Result};
+
+use gcloud::AuthProvider;
+
+use google_cloud::pubsub;
+
 use glob::glob;
+
 use protocol::Trigger;
 
 use crate::interface::TriggerQueueReader;
+
+pub struct JSONPubsubMessage {
+    message: pubsub::Message,
+}
+
+#[async_trait]
+impl<T> Message<T> for
 
 pub struct PubSubTriggerReader {
     client: PubSubClient,

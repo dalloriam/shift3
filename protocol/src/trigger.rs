@@ -1,12 +1,12 @@
-use gcloud::datastore::DatastoreEntity;
+use google_cloud::datastore::{FromValue, IntoValue};
 
 use serde::{Deserialize, Serialize};
 
 use crate::RuleID;
 
-#[derive(Clone, DatastoreEntity, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, FromValue, IntoValue, Debug, Deserialize, PartialEq, Serialize)]
 pub struct TriggerConfiguration {
-    pub id: u64,
+    pub id: i64,
     pub rule: RuleID,
     pub trigger_type: String,
     pub data: String, // JSON-encoded for now, willing to discuss formatting or alternatives later.

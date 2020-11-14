@@ -2,12 +2,7 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::mem;
 
-use google_datastore1::{
-    CommitRequest, Datastore, Filter, KindExpression, Mutation, PropertyFilter, PropertyReference,
-    Query, RunQueryRequest, Value,
-};
-
-use hyper::Client;
+use google_cloud::{datastore, error::Error as GCloudError};
 
 use snafu::{ResultExt, Snafu};
 
@@ -16,24 +11,22 @@ use crate::{
     https, AuthProvider,
 };
 
-enum CommitMode {
-    NonTransactional,
-}
-
-impl fmt::Display for CommitMode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let name: &'static str = match self {
-            CommitMode::NonTransactional => "NON_TRANSACTIONAL",
-        };
-        write!(f, "{}", name)
-    }
-}
-
 #[derive(Debug, Snafu)]
 pub enum DatastoreError {
-    InsertFailed { message: String },
-    QueryFailed { message: String },
-    BadEntity { source: EntityConversionError },
+    #[snafu(display("Failed to create client: {}", source))]
+    FailedToCreateClient {
+        source: GCloudError,
+    },
+
+    InsertFailed {
+        source: GCloudError,
+    },
+    QueryFailed {
+        message: String,
+    },
+    BadEntity {
+        source: EntityConversionError,
+    },
     IncompleteData,
 }
 
@@ -41,25 +34,14 @@ type Result<T> = std::result::Result<T, DatastoreError>;
 
 /// High-level client for Google Datastore.
 pub struct DatastoreClient {
-    batch_size: Option<usize>,
-
-    hub: Datastore<Client, AuthProvider>,
-
-    mutation_buffer: Vec<Mutation>,
-
-    project_id: String,
+    client: datastore::Client,
 }
 
 impl DatastoreClient {
     /// Returns a new client from a project ID and an authenticator.
-    pub fn new(project_id: String, authenticator: AuthProvider) -> DatastoreClient {
-        let hub = Datastore::new(https::new_tls_client(), authenticator);
-        DatastoreClient {
-            batch_size: None,
-            hub,
-            mutation_buffer: Vec::new(),
-            project_id,
-        }
+    pub async fn new(project_id: String, authenticator: AuthProvider) -> Result<DatastoreClient> {
+        let client = datastore::Client::from_credentials(project_id, authenticator.into()).await?;
+        Ok(DatastoreClient { client })
     }
 
     /// Sets an optional batch size for the client.
@@ -67,18 +49,19 @@ impl DatastoreClient {
     /// The batch size dictates the maximum number of pending mutations
     /// between commits.
     pub fn with_batch_size(mut self, batch_size: usize) -> Self {
-        self.batch_size = Some(batch_size);
         self
     }
 
     /// Returns whether the client has unapplied mutations.
     #[inline]
     pub fn has_pending_operations(&self) -> bool {
-        !self.mutation_buffer.is_empty()
+        unimplemented!();
     }
 
     /// Commits the pending mutation buffer.
     pub fn commit(&mut self) -> Result<()> {
+        unimplemented!()
+        /*
         if !self.has_pending_operations() {
             // Short-circuit immediately
             // if no pending operations.
@@ -107,9 +90,12 @@ impl DatastoreClient {
             })?;
 
         Ok(())
+        */
     }
 
     fn insert_ds(&mut self, ds_entity: DSEntity) -> Result<()> {
+        unimplemented!()
+        /*
         self.mutation_buffer.push(Mutation {
             insert: Some(ds_entity.into()),
             ..Default::default()
@@ -123,15 +109,15 @@ impl DatastoreClient {
             }
         }
         Ok(())
+        */
     }
 
     /// Inserts a new entity to datastore.
     ///
     /// This method actually inserts a mutation to the mutation buffer, which must be committed
     /// before dropping the client for fear of skipping operations.
-    pub fn insert<T: DatastoreEntity>(&mut self, item: T) -> Result<()> {
-        let ds_entity = item.into_entity();
-        self.insert_ds(ds_entity)
+    pub async fn insert<T: datastore::IntoEntity>(&mut self, item: T) -> Result<()> {
+        unimplemented!()
     }
 
     /// Inserts a new entity to datastore, specifying an explicit ID.
@@ -146,6 +132,8 @@ impl DatastoreClient {
     where
         T: DatastoreEntity,
     {
+        unimplemented!();
+        /*
         let query = Query {
             kind: Some(vec![KindExpression {
                 name: Some(String::from(T::get_kind())),
@@ -181,6 +169,7 @@ impl DatastoreClient {
         }
 
         Ok(results)
+        */
     }
 
     /// Get an entity by its id.
@@ -188,69 +177,75 @@ impl DatastoreClient {
     where
         T: DatastoreEntity,
     {
-        let query = Query {
-            kind: Some(vec![KindExpression {
-                name: Some(String::from(T::get_kind())),
-            }]),
-            filter: Some(Filter {
-                property_filter: Some({
-                    PropertyFilter {
-                        property: Some(PropertyReference {
-                            name: Some(String::from("id")),
-                        }),
-                        value: Some(Value {
-                            integer_value: Some(id.to_string()),
-                            ..Default::default()
-                        }),
-                        op: Some(String::from("EQUAL")),
-                    }
-                }),
-                ..Default::default()
-            }),
-            offset: Some(0),
-            limit: Some(1),
-            ..Default::default()
-        };
-
-        let (_resp, r) = self
-            .hub
-            .projects()
-            .run_query(
-                RunQueryRequest {
-                    query: Some(query),
+        unimplemented!();
+        /*
+            let query = Query {
+                kind: Some(vec![KindExpression {
+                    name: Some(String::from(T::get_kind())),
+                }]),
+                filter: Some(Filter {
+                    property_filter: Some({
+                        PropertyFilter {
+                            property: Some(PropertyReference {
+                                name: Some(String::from("id")),
+                            }),
+                            value: Some(Value {
+                                integer_value: Some(id.to_string()),
+                                ..Default::default()
+                            }),
+                            op: Some(String::from("EQUAL")),
+                        }
+                    }),
                     ..Default::default()
-                },
-                &self.project_id,
-            )
-            .doit()
-            .map_err(|e| DatastoreError::QueryFailed {
-                message: e.to_string(),
-            })?;
+                }),
+                offset: Some(0),
+                limit: Some(1),
+                ..Default::default()
+            };
 
-        let batch = r.batch.ok_or(DatastoreError::IncompleteData)?;
-        let entities = batch.entity_results.ok_or(DatastoreError::IncompleteData)?;
+            let (_resp, r) = self
+                .hub
+                .projects()
+                .run_query(
+                    RunQueryRequest {
+                        query: Some(query),
+                        ..Default::default()
+                    },
+                    &self.project_id,
+                )
+                .doit()
+                .map_err(|e| DatastoreError::QueryFailed {
+                    message: e.to_string(),
+                })?;
 
-        let mut results = Vec::new();
-        for entity_result in entities.into_iter() {
-            let entity = entity_result.entity.ok_or(DatastoreError::IncompleteData)?;
-            let user_type = T::from_entity(DSEntity::try_from(entity).context(BadEntity)?);
-            results.push(user_type);
-        }
+            let batch = r.batch.ok_or(DatastoreError::IncompleteData)?;
+            let entities = batch.entity_results.ok_or(DatastoreError::IncompleteData)?;
 
-        if results.is_empty() {
-            Ok(None)
-        } else {
-            // Only keep the first element
-            Ok(Some(results.remove(0)))
-        }
+            let mut results = Vec::new();
+            for entity_result in entities.into_iter() {
+                let entity = entity_result.entity.ok_or(DatastoreError::IncompleteData)?;
+                let user_type = T::from_entity(DSEntity::try_from(entity).context(BadEntity)?);
+                results.push(user_type);
+            }
+
+            if results.is_empty() {
+                Ok(None)
+            } else {
+                // Only keep the first element
+                Ok(Some(results.remove(0)))
+            }
+        */
     }
 }
 
 impl Drop for DatastoreClient {
     fn drop(&mut self) {
+        unimplemented!();
+        /*
         // Validate that nothing is in the tx buffer.
         if !self.mutation_buffer.is_empty() {
             log::error!("transaction buffer not empty")
         }
+        */
     }
 }

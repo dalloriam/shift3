@@ -50,5 +50,5 @@ fn in_memory_full_loop() {
     // We just make sure all messages were pulled & acknowledged. Since we don't use an
     // action integration that exists, we won't validate behavior too much.
     assert!(reader_ref.incoming_queue.is_empty());
-    assert_eq!(reader_ref.received_acks.len(), 10)
+    assert_eq!(reader_ref.ack_count(), 10)
 }

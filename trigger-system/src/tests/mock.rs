@@ -2,6 +2,8 @@ use std::sync::{Arc, Mutex};
 
 use anyhow::Error;
 
+use async_trait::async_trait;
+
 use crate::interface::{Trigger, TriggerConfigLoader, TriggerConfiguration, TriggerQueueWriter};
 
 pub struct Dummy {}
@@ -12,14 +14,16 @@ impl Default for Dummy {
     }
 }
 
+#[async_trait]
 impl TriggerConfigLoader for Dummy {
-    fn get_all_configurations(&self) -> Result<Vec<TriggerConfiguration>, Error> {
+    async fn get_all_configurations(&self) -> Result<Vec<TriggerConfiguration>, Error> {
         Ok(Vec::new())
     }
 }
 
+#[async_trait]
 impl TriggerQueueWriter for Dummy {
-    fn push_trigger(&self, _trigger: Trigger) -> Result<(), Error> {
+    async fn push_trigger(&self, _trigger: Trigger) -> Result<(), Error> {
         Ok(())
     }
 }
@@ -34,8 +38,9 @@ impl InMemoryConfigLoader {
     }
 }
 
+#[async_trait]
 impl TriggerConfigLoader for InMemoryConfigLoader {
-    fn get_all_configurations(&self) -> Result<Vec<TriggerConfiguration>, Error> {
+    async fn get_all_configurations(&self) -> Result<Vec<TriggerConfiguration>, Error> {
         Ok(self.configs.clone())
     }
 }
@@ -52,8 +57,9 @@ impl InMemoryQueueWriter {
 
 type MultiThreadQueueWriter = Arc<Mutex<InMemoryQueueWriter>>;
 
+#[async_trait]
 impl TriggerQueueWriter for MultiThreadQueueWriter {
-    fn push_trigger(&self, trigger: Trigger) -> Result<(), Error> {
+    async fn push_trigger(&self, trigger: Trigger) -> Result<(), Error> {
         let mut guard = self.lock().unwrap(); // We won't get poisoning in a simple test.
         let queue_handle = &mut *guard;
         queue_handle.queue.push(trigger);

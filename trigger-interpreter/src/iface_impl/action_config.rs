@@ -3,38 +3,50 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use async_std::sync::Mutex;
+
+use async_trait::async_trait;
+
 use anyhow::{ensure, Error, Result};
-use gcloud::{datastore::DatastoreClient, AuthProvider};
+
+use gcloud::AuthProvider;
+
+use google_cloud::datastore;
+
 use protocol::{Rule, RuleID};
 
 use crate::interface::ActionConfigReader;
 
 pub struct DatastoreActionConfigLoader {
-    client: DatastoreClient,
+    client: Mutex<datastore::Client>,
 }
 
 impl DatastoreActionConfigLoader {
-    pub fn new(project_id: String, authenticator: AuthProvider) -> Self {
-        Self {
-            client: DatastoreClient::new(project_id, authenticator),
-        }
+    pub async fn new(project_id: String, authenticator: AuthProvider) -> Result<Self> {
+        let client = datastore::Client::from_credentials(project_id, authenticator.into()).await?;
+        Ok(Self {
+            client: Mutex::from(client),
+        })
     }
 
-    pub fn from_credentials<P: AsRef<Path>>(
+    pub async fn from_credentials<P: AsRef<Path>>(
         project_id: String,
         credentials_file_path: P,
     ) -> Result<Self> {
         let authenticator = AuthProvider::from_json_file(credentials_file_path)?;
-        Ok(Self::new(project_id, authenticator))
+        Self::new(project_id, authenticator).await
     }
 }
 
+#[async_trait]
 impl ActionConfigReader for DatastoreActionConfigLoader {
-    fn get_rule(&self, id: RuleID) -> Result<Rule> {
-        let result: Option<Rule> = self
-            .client
-            .get(id)
-            .map_err(|ds| Error::msg(format!("{:?}", ds)))?;
+    async fn get_rule(&self, id: RuleID) -> Result<Rule> {
+        let mut client_guard = self.client.lock().await;
+        let client = &mut (*client_guard);
+
+        // TODO: Not a fan of entering the kind as a string, it's error-prone...
+        let key = datastore::Key::new("Rule").id(id);
+        let result: Option<Rule> = client.get(key).await?;
 
         match result {
             None => Err(Error::msg(format!("Rule with id '{}' not found.", id))),
@@ -61,8 +73,9 @@ impl FileActionConfigReader {
     }
 }
 
+#[async_trait]
 impl ActionConfigReader for FileActionConfigReader {
-    fn get_rule(&self, id: RuleID) -> Result<Rule> {
+    async fn get_rule(&self, id: RuleID) -> Result<Rule> {
         let path = self.path.join(format!("action_config_{}.txt", id));
 
         let data = fs::read_to_string(path)?;

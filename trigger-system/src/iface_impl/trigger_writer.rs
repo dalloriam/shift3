@@ -2,42 +2,56 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use anyhow::{ensure, Result};
+use async_std::sync::Mutex;
 
-use gcloud::{pub_sub::PubSubClient, AuthProvider};
+use anyhow::{anyhow, ensure, Result};
+
+use async_trait::async_trait;
+
+use gcloud::AuthProvider;
+
+use google_cloud::pubsub;
 
 use crate::interface::{Trigger, TriggerQueueWriter};
 
 pub struct PubsubTriggerQueueWriter {
-    client: PubSubClient,
-    topic: String,
+    topic: Mutex<pubsub::Topic>,
 }
 
 impl PubsubTriggerQueueWriter {
-    pub fn new(project_id: String, authenticator: AuthProvider, topic: String) -> Self {
-        Self {
-            client: PubSubClient::new(project_id, authenticator),
-            topic,
-        }
+    pub async fn new(
+        project_id: String,
+        authenticator: AuthProvider,
+        topic: String,
+    ) -> Result<Self> {
+        let mut client =
+            pubsub::Client::from_credentials(&project_id, authenticator.into()).await?;
+        let topic = client
+            .topic(&topic)
+            .await?
+            .ok_or_else(|| anyhow!("topic doesn't exist"))?;
+
+        Ok(Self {
+            topic: Mutex::from(topic),
+        })
     }
 
-    pub fn from_credentials<P: AsRef<Path>>(
+    pub async fn from_credentials<P: AsRef<Path>>(
         project_id: String,
         credentials_file_path: P,
         topic: String,
     ) -> Result<Self> {
         let authenticator = AuthProvider::from_json_file(credentials_file_path)?;
-        Ok(PubsubTriggerQueueWriter::new(
-            project_id,
-            authenticator,
-            topic,
-        ))
+        PubsubTriggerQueueWriter::new(project_id, authenticator, topic).await
     }
 }
 
+#[async_trait]
 impl TriggerQueueWriter for PubsubTriggerQueueWriter {
-    fn push_trigger(&self, trigger: Trigger) -> Result<()> {
-        self.client.publish(trigger, &self.topic)?;
+    async fn push_trigger(&self, trigger: Trigger) -> Result<()> {
+        let mut guard = self.topic.lock().await;
+        let data = serde_json::to_vec(&trigger)?;
+        (*guard).publish(data).await?;
         Ok(())
     }
 }
@@ -62,8 +76,9 @@ impl DirectoryTriggerQueueWriter {
     }
 }
 
+#[async_trait]
 impl TriggerQueueWriter for DirectoryTriggerQueueWriter {
-    fn push_trigger(&self, trigger: Trigger) -> Result<()> {
+    async fn push_trigger(&self, trigger: Trigger) -> Result<()> {
         let value = self.counter.fetch_add(1, Ordering::SeqCst);
         let path = self.path.join(format!("trigger_{}.txt", value));
 

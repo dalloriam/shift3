@@ -8,7 +8,10 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1"
+async-std = "1.7"
+async-trait = "0.1"
 gcloud = {path = "../gcloud"}
+google-cloud = {version = "0.1", features = ["pubsub"]}
 log = "0.4"
 plugin-core = {path = "../plugin-core"}
 plugin-host = {path = "../plugin-host"}

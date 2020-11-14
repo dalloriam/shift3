@@ -2,8 +2,6 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::iter::FromIterator;
 
-use google_datastore1::{Entity, Key, PathElement};
-
 use snafu::{ensure, Snafu};
 
 use crate::datastore::DatastoreValue;
@@ -26,6 +24,7 @@ pub struct DSEntity {
     pub entity_data: HashMap<String, DatastoreValue>,
 }
 
+/*
 impl TryFrom<Entity> for DSEntity {
     type Error = Error;
 
@@ -77,6 +76,7 @@ impl From<DSEntity> for Entity {
         }
     }
 }
+*/
 
 /// Converts a type to a metadata map format supported by the
 /// Google Datastore API.

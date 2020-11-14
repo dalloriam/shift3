@@ -1,5 +1,7 @@
 use anyhow::Result;
 
+use async_trait::async_trait;
+
 use protocol::{ActionManifest, Rule, RuleID, Trigger};
 
 /// Trait describing an object capable of pulling a trigger from a queue.
@@ -12,11 +14,13 @@ pub trait TriggerQueueReader {
 }
 
 /// Trait describing an object capable of pulling a trigger from a queue.
+#[async_trait]
 pub trait ActionConfigReader {
-    fn get_rule(&self, id: RuleID) -> Result<Rule>;
+    async fn get_rule(&self, id: RuleID) -> Result<Rule>;
 }
 
 /// Trait describing an object capable of pushing an action manifest to a queue.
+#[async_trait]
 pub trait ActionManifestQueueWriter {
-    fn push_action_manifest(&self, manifest: ActionManifest) -> Result<()>;
+    async fn push_action_manifest(&self, manifest: ActionManifest) -> Result<()>;
 }

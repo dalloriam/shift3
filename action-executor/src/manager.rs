@@ -3,7 +3,7 @@ use std::sync::{mpsc, Arc};
 
 use anyhow::Result;
 
-use plugin_core::{ActionPlugin, Error as PluginError};
+use plugin_core::ActionPlugin;
 use plugin_host::PluginHost;
 
 use crate::BoxedQueueReader;
@@ -46,38 +46,29 @@ impl ExecutorManager {
         Ok(())
     }
 
-    fn pull_cycle(&mut self) -> Result<()> {
-        let mut ack_ids = Vec::with_capacity(10); // TODO: Match batch size.
-        let mut res: Result<(), PluginError> = Ok(());
+    async fn pull_cycle(&mut self) -> Result<()> {
+        if let Some(mut msg) = self.manifest_reader.pull_action_manifest().await? {
+            // Deserialize message.
+            let action_manifest = msg.data()?;
 
-        for (ack_id, action_manifest) in self.manifest_reader.pull_action_manifests()? {
             log::debug!("got manifest: {:?}", action_manifest);
 
             if let Some(ex) = self.executors.get(&action_manifest.action_type) {
-                res = ex.execute_action(action_manifest);
-                if res.is_err() {
-                    break;
-                }
+                ex.execute_action(action_manifest)?;
             } else {
                 log::warn!("unknown action type: {:?}", &action_manifest.action_type);
             }
 
-            ack_ids.push(ack_id);
+            msg.ack().await?;
         }
 
-        if !ack_ids.is_empty() {
-            self.manifest_reader.batch_ack(ack_ids)?;
-        }
-
-        res?;
         Ok(())
     }
 
-    pub fn start(&mut self) {
+    async fn asynchronous_main_loop(&mut self) {
         log::debug!("executor loop running");
-
         loop {
-            if let Err(e) = self.pull_cycle() {
+            if let Err(e) = self.pull_cycle().await {
                 log::error!("{:?}", e);
             }
 
@@ -86,5 +77,9 @@ impl ExecutorManager {
                 break;
             }
         }
+    }
+
+    pub fn start(&mut self) {
+        async_std::task::block_on(self.asynchronous_main_loop());
     }
 }

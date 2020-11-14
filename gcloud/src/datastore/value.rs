@@ -1,7 +1,5 @@
 use std::convert::TryFrom;
 
-use google_datastore1::{ArrayValue, Value};
-
 use snafu::{ResultExt, Snafu};
 
 use crate::datastore::EntityConversionError;
@@ -112,6 +110,8 @@ where
     }
 }
 
+/*
+
 impl TryFrom<Value> for DatastoreValue {
     type Error = Error;
 
@@ -150,6 +150,9 @@ impl TryFrom<Value> for DatastoreValue {
     }
 }
 
+*/
+
+/*
 impl From<DatastoreValue> for Value {
     fn from(v: DatastoreValue) -> Value {
         match v {
@@ -174,6 +177,7 @@ impl From<DatastoreValue> for Value {
         }
     }
 }
+*/
 
 #[cfg(test)]
 mod tests {

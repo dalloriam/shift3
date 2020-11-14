@@ -1,48 +1,89 @@
 use std::path::Path;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
-use gcloud::{pub_sub::PubSubClient, AuthProvider};
+use async_std::sync::Mutex;
+
+use async_trait::async_trait;
+
+use gcloud::AuthProvider;
+
+use google_cloud::pubsub;
 
 use protocol::ActionManifest;
 
-use crate::interfaces::ActionManifestQueueReader;
+use serde::de::DeserializeOwned;
+
+use crate::interfaces::{ActionManifestQueueReader, Message};
+
+pub struct JSONPubsubMessage {
+    message: pubsub::Message,
+}
+
+#[async_trait]
+impl<T> Message<T> for JSONPubsubMessage
+where
+    T: DeserializeOwned + 'static,
+{
+    async fn ack(&mut self) -> Result<()> {
+        self.message.ack().await?;
+        Ok(())
+    }
+
+    fn data(&self) -> Result<T> {
+        let deserialized = serde_json::from_slice(self.message.data())?;
+        Ok(deserialized)
+    }
+}
+
+impl From<pubsub::Message> for JSONPubsubMessage {
+    fn from(m: pubsub::Message) -> JSONPubsubMessage {
+        JSONPubsubMessage { message: m }
+    }
+}
 
 pub struct PubsubActionManifestQueueReader {
-    client: PubSubClient,
-    subscription_id: String,
+    subscription: Mutex<pubsub::Subscription>,
 }
 
 impl PubsubActionManifestQueueReader {
-    pub fn new(project_id: String, authenticator: AuthProvider, subscription_id: String) -> Self {
-        PubsubActionManifestQueueReader {
-            client: PubSubClient::new(project_id, authenticator),
-            subscription_id,
-        }
+    pub async fn new(
+        project_id: String,
+        authenticator: AuthProvider,
+        subscription_id: String,
+    ) -> Result<Self> {
+        let mut client =
+            pubsub::Client::from_credentials(&project_id, authenticator.into()).await?;
+
+        let subscription = client
+            .subscription(&subscription_id)
+            .await?
+            .ok_or_else(|| anyhow!("subscription doesn't exist"))?;
+
+        Ok(PubsubActionManifestQueueReader {
+            subscription: Mutex::from(subscription),
+        })
     }
 
-    pub fn from_credentials<P: AsRef<Path>>(
+    pub async fn from_credentials<P: AsRef<Path>>(
         project_id: String,
         credentials_file_path: P,
         subscription_id: String,
     ) -> Result<Self> {
         let authenticator: AuthProvider = AuthProvider::from_json_file(credentials_file_path)?;
-        Ok(PubsubActionManifestQueueReader::new(
-            project_id,
-            authenticator,
-            subscription_id,
-        ))
+        PubsubActionManifestQueueReader::new(project_id, authenticator, subscription_id).await
     }
 }
 
+#[async_trait]
 impl ActionManifestQueueReader for PubsubActionManifestQueueReader {
-    fn batch_ack(&self, ack_ids: Vec<String>) -> Result<()> {
-        self.client.acknowledge(ack_ids, &self.subscription_id)?;
-        Ok(())
-    }
-
-    fn pull_action_manifests(&self) -> Result<Vec<(String, ActionManifest)>> {
-        let results = self.client.pull(self.subscription_id.as_ref(), 10)?;
-        Ok(results)
+    async fn pull_action_manifest(
+        &self,
+    ) -> Result<Option<Box<dyn Message<ActionManifest> + Send>>> {
+        let mut subscription_guard = self.subscription.lock().await;
+        match subscription_guard.receive().await {
+            Some(m) => Ok(Some(Box::from(JSONPubsubMessage::from(m)))),
+            None => Ok(None),
+        }
     }
 }
