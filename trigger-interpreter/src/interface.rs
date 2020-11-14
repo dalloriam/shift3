@@ -4,13 +4,12 @@ use async_trait::async_trait;
 
 use protocol::{ActionManifest, Rule, RuleID, Trigger};
 
+use toolkit::message::Message;
+
 /// Trait describing an object capable of pulling a trigger from a queue.
+#[async_trait]
 pub trait TriggerQueueReader {
-    fn pull_trigger(&self) -> Result<Vec<(String, Trigger)>>;
-
-    fn acknowlege(&self, ack_ids: Vec<String>) -> Result<()>;
-
-    fn box_clone(&self) -> Box<dyn TriggerQueueReader + Send>;
+    async fn pull_trigger(&self) -> Result<Option<Box<dyn Message<Trigger> + Send>>>;
 }
 
 /// Trait describing an object capable of pulling a trigger from a queue.

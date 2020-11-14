@@ -43,7 +43,7 @@ impl ActionManifestQueueReader for PubsubActionManifestQueueReader {
     async fn pull_action_manifest(
         &self,
     ) -> Result<Option<Box<dyn Message<ActionManifest> + Send>>> {
-        let r = self.subscription.pull().await?;
-        Ok(r)
+        let msg = self.subscription.pull().await?;
+        Ok(msg)
     }
 }

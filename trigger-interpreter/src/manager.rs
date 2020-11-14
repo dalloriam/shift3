@@ -29,12 +29,12 @@ impl TriggerManager {
         })
     }
 
-    fn interpret_trigger(&self, trigger: Trigger) -> Result<()> {
+    async fn interpret_trigger(&self, trigger: Trigger) -> Result<()> {
         log::debug!("begin interpreting the trigger data");
 
         log::debug!("fetching the rule ({}) by its id", trigger.rule);
         // Get action configuration associated with the trigger's rule.
-        let rule = self.cfg_reader.get_rule(trigger.rule)?;
+        let rule = self.cfg_reader.get_rule(trigger.rule).await?;
         log::debug!("rule fetched {:?}", rule);
 
         log::debug!("rendering the template from the action configuration");
@@ -48,40 +48,30 @@ impl TriggerManager {
         };
 
         log::debug!("pushing the action manifest");
-        self.queue_writer.push_action_manifest(action_manifest)?;
+        self.queue_writer
+            .push_action_manifest(action_manifest)
+            .await?;
 
         Ok(())
     }
 
-    fn pull_trigger(&self) -> Result<()> {
-        let triggers = self.queue_reader.pull_trigger()?;
-        log::debug!("number of messages pulled ({:?})", triggers.len());
+    async fn pull_trigger(&self) -> Result<()> {
+        let trigger_maybe = self.queue_reader.pull_trigger().await?;
 
-        // TODO: Use same capacity as the batch size used during queue reading
-        let mut ack_ids = Vec::with_capacity(10);
-        let mut result: Result<(), Error> = Ok(());
-
-        for (id, trigger) in triggers {
-            if let Err(err) = self.interpret_trigger(trigger) {
-                result = Err(err);
-                break;
-            }
-
-            ack_ids.push(id);
+        if let Some(mut message) = self.queue_reader.pull_trigger().await? {
+            let trigger = message.data()?;
+            self.interpret_trigger(trigger).await?;
+            message.ack().await?;
         }
 
-        if !ack_ids.is_empty() {
-            self.queue_reader.acknowlege(ack_ids)?;
-        }
-
-        result
+        Ok(())
     }
 
-    pub fn start(&self) {
+    async fn asynchronous_main_loop(&self) {
         log::debug!("begin pulling trigger data");
 
         loop {
-            if let Err(e) = self.pull_trigger() {
+            if let Err(e) = self.pull_trigger().await {
                 log::error!("{:?}", e);
             }
 
@@ -89,5 +79,9 @@ impl TriggerManager {
                 break;
             }
         }
+    }
+
+    pub fn start(&self) {
+        async_std::task::block_on(self.asynchronous_main_loop());
     }
 }
