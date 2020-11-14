@@ -8,7 +8,9 @@ use async_trait::async_trait;
 
 use protocol::ActionManifest;
 
-use crate::interfaces::{ActionManifestQueueReader, Message};
+use toolkit::message::{Error as MessageError, Message};
+
+use crate::interfaces::ActionManifestQueueReader;
 
 pub struct DummyMessage {
     manifest: ActionManifest,
@@ -17,13 +19,13 @@ pub struct DummyMessage {
 
 #[async_trait]
 impl Message<ActionManifest> for DummyMessage {
-    async fn ack(&mut self) -> Result<()> {
+    async fn ack(&mut self) -> std::result::Result<(), MessageError> {
         let mut guard = self.ack_callback_vec.lock().await;
         (*guard).push("asdf".into());
         Ok(())
     }
 
-    fn data(&self) -> Result<ActionManifest> {
+    fn data(&self) -> std::result::Result<ActionManifest, MessageError> {
         Ok(self.manifest.clone())
     }
 }

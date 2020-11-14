@@ -4,16 +4,7 @@ use async_trait::async_trait;
 
 use protocol::ActionManifest;
 
-use serde::de::DeserializeOwned;
-
-#[async_trait]
-pub trait Message<T>
-where
-    T: DeserializeOwned,
-{
-    async fn ack(&mut self) -> Result<()>;
-    fn data(&self) -> Result<T>;
-}
+use toolkit::message::Message;
 
 #[async_trait]
 pub trait ActionManifestQueueReader {

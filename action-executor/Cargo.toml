@@ -6,12 +6,13 @@ edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[dev-dependencies]
+
 [dependencies]
 anyhow = "1"
-async-std = "1.7"
 async-trait = "0.1"
+async-std = "1.7"
 gcloud = {path = "../gcloud"}
-google-cloud = {version = "0.1", features = ["pubsub"]}
 log = "0.4"
 plugin-core = {path = "../plugin-core"}
 plugin-host = {path = "../plugin-host"}
