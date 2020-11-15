@@ -65,7 +65,8 @@ impl ExecutorManager {
         Ok(())
     }
 
-    async fn asynchronous_main_loop(&mut self) {
+    #[tokio::main]
+    pub async fn start(&mut self) {
         log::debug!("executor loop running");
         loop {
             if let Err(e) = self.pull_cycle().await {
@@ -77,9 +78,5 @@ impl ExecutorManager {
                 break;
             }
         }
-    }
-
-    pub fn start(&mut self) {
-        async_std::task::block_on(self.asynchronous_main_loop());
     }
 }
