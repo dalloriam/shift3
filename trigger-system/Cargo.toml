@@ -15,7 +15,7 @@ tokio-async-std = "1.5"
 async-trait = "0.1"
 log = "0.4"
 gcloud = {path = "../gcloud"}
-google-cloud = {version = "0.1", features = ["full"]}
+google-cloud = {git = "https://github.com/dalloriam/google-cloud-rs", features = ["full"]}
 plugin-core = {path = "../plugin-core"}
 plugin-host = {path = "../plugin-host"}
 protocol = {path = "../protocol"}

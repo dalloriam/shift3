@@ -1,4 +1,4 @@
-use std::marker;
+use std::{marker, time};
 
 use async_std::sync::Mutex;
 
@@ -214,7 +214,10 @@ where
     /// Pull a message from the subscription.
     pub async fn pull(&self) -> Result<Option<Box<dyn Message<T> + Send>>> {
         let mut subscription_guard = self.subscription.lock().await;
-        match subscription_guard.receive().await {
+        match subscription_guard
+            .receive_timeout(time::Duration::from_secs(5))
+            .await
+        {
             Some(m) => Ok(Some(Box::from(Format::from(m)))),
             None => Ok(None),
         }

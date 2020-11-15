@@ -12,7 +12,7 @@ tokio-async-std = "1.5"
 async-trait = "0.1"
 gcloud = {path = "../gcloud"}
 glob = "0.3.0"
-google-cloud = {version = "0.1", features = ["datastore", "pubsub"]}
+google-cloud = {git="https://github.com/dalloriam/google-cloud-rs", features = ["datastore", "pubsub"]}
 handlebars = "3.3.0"
 log = "0.4"
 protocol = {path = "../protocol"}
