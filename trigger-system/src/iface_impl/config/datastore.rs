@@ -29,7 +29,7 @@ impl DatastoreTriggerConfigLoader {
         credentials_file_path: P,
     ) -> Result<Self> {
         let auth = AuthProvider::from_json_file(credentials_file_path)?;
-        Ok(Self::new(project_id, auth).await?)
+        Self::new(project_id, auth).await
     }
 }
 

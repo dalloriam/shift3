@@ -22,9 +22,8 @@ impl Default for Dummy {
 
 #[async_trait]
 impl ActionConfigReader for Dummy {
-    async fn get_rule(&self, id: RuleID) -> Result<Rule> {
+    async fn get_rule(&self, _id: RuleID) -> Result<Rule> {
         Ok(Rule {
-            id,
             trigger_config_id: 1,
             action_config: String::from(""),
             action_type: String::from(""),

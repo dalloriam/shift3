@@ -27,10 +27,10 @@ pub struct TriggerInterpreterConfiguration {
 
 impl TriggerInterpreterConfiguration {
     /// Converts the trigger interpreter configuration to a usable service instance.
-    pub fn into_instance(self, _plugin_host: Arc<PluginHost>) -> Result<Service> {
-        let cfg_reader = self.config_reader.into_instance()?;
-        let queue_writer = self.queue_writer.into_instance()?;
-        let queue_reader = self.queue_reader.into_instance()?;
+    pub async fn into_instance(self, _plugin_host: Arc<PluginHost>) -> Result<Service> {
+        let cfg_reader = self.config_reader.into_instance().await?;
+        let queue_writer = self.queue_writer.into_instance().await?;
+        let queue_reader = self.queue_reader.into_instance().await?;
 
         Ok(Box::from(TriggerInterpreter::start(
             queue_reader,
@@ -57,7 +57,6 @@ pub enum ConfigReaderConfiguration {
 
 impl ConfigReaderConfiguration {
     /// Returns a usable action config reader from the configuration struct.
-    #[tokio::main]
     pub async fn into_instance(self) -> Result<Box<dyn ActionConfigReader + Send>> {
         let b: Box<dyn ActionConfigReader + Send> = match self {
             ConfigReaderConfiguration::File { file } => {
@@ -93,7 +92,6 @@ pub enum QueueWriterConfiguration {
 }
 
 impl QueueWriterConfiguration {
-    #[tokio::main]
     pub async fn into_instance(self) -> Result<Box<dyn ActionManifestQueueWriter + Send>> {
         let b: Box<dyn ActionManifestQueueWriter + Send> = match self {
             QueueWriterConfiguration::Directory { path } => {
@@ -134,7 +132,6 @@ pub enum QueueReaderConfiguration {
 }
 
 impl QueueReaderConfiguration {
-    #[tokio::main]
     pub async fn into_instance(self) -> Result<Box<dyn TriggerQueueReader + Send>> {
         let b: Box<dyn TriggerQueueReader + Send> = match self {
             QueueReaderConfiguration::Directory { path } => {
@@ -167,17 +164,17 @@ mod tests {
     macro_rules! parse_ok {
         ($t: ident, $(($func_name:ident, $file_name:ident, $eq_to:expr),)*) => {
             $(
-                #[test]
-                fn $func_name() {
+                #[tokio::test]
+                async fn $func_name() {
                     const DATA_RAW: &str =
-                        include_str!(concat!("test_data/", stringify!($file_name), ".json"));
+                        include_str!(concat!("config/test_data/", stringify!($file_name), ".json"));
 
                     let deserialized: $t = serde_json::from_str(DATA_RAW).unwrap();
                     assert_eq!(deserialized, $eq_to);
 
                     // We don't care about whether it failed.
                     // TLDR; Increase coverage
-                    match deserialized.into_instance() {
+                    match deserialized.into_instance().await {
                         Ok(_) => {},
                         Err(_) => {}
                     }

@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::RuleID;
 
 #[derive(Clone, FromValue, IntoValue, Debug, Deserialize, PartialEq, Serialize)]
+#[datastore(rename_all = "snake_case")]
 pub struct TriggerConfiguration {
     pub id: i64,
     pub rule: RuleID,

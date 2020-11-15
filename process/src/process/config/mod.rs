@@ -28,11 +28,11 @@ pub enum SystemConfiguration {
 }
 
 impl SystemConfiguration {
-    pub fn into_instance(self, host: Arc<PluginHost>) -> Result<Service> {
+    pub async fn into_instance(self, host: Arc<PluginHost>) -> Result<Service> {
         match self {
-            SystemConfiguration::Trigger(cfg) => cfg.into_instance(host),
-            SystemConfiguration::Interpreter(cfg) => cfg.into_instance(host),
-            SystemConfiguration::Executor(cfg) => cfg.into_instance(host),
+            SystemConfiguration::Trigger(cfg) => cfg.into_instance(host).await,
+            SystemConfiguration::Interpreter(cfg) => cfg.into_instance(host).await,
+            SystemConfiguration::Executor(cfg) => cfg.into_instance(host).await,
         }
     }
 }
@@ -49,8 +49,8 @@ mod tests {
     };
     use super::SystemConfiguration;
 
-    #[test]
-    fn test_into_instance() {
+    #[tokio::test]
+    async fn test_into_instance() {
         let cfg = SystemConfiguration::Trigger(TriggerSystemConfiguration {
             config_reader: ConfigReaderConfiguration::File {
                 file: PathBuf::from("/var"),
@@ -60,6 +60,8 @@ mod tests {
             },
         });
 
-        cfg.into_instance(Arc::new(PluginHost::default())).unwrap();
+        cfg.into_instance(Arc::new(PluginHost::default()))
+            .await
+            .unwrap();
     }
 }

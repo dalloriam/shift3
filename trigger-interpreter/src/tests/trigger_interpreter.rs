@@ -22,7 +22,6 @@ fn basic_test() {
 #[test]
 fn in_memory_full_loop() {
     let rule = Rule {
-        id: 1,
         trigger_config_id: 1,
         action_config: String::from(
             "{\"body\": \"New file: {{file_name}}\", \"title\": \"ShifTTT: New File Created\"}",
@@ -30,7 +29,7 @@ fn in_memory_full_loop() {
         action_type: String::from("notify"),
     };
     let mut action_configs = HashMap::new();
-    action_configs.insert(rule.id, rule.clone());
+    action_configs.insert(1, rule.clone());
 
     let file_name = "test";
     let triggers = vec![Trigger {
@@ -66,7 +65,7 @@ fn in_memory_full_loop() {
     assert_eq!(
         queue_writer_ref.queue.first().unwrap(),
         &ActionManifest {
-            rule: rule.id,
+            rule: 1,
             action_type: rule.action_type.clone(),
             data: String::from(format!(
                 "{{\"body\": \"New file: {}\", \"title\": \"ShifTTT: New File Created\"}}",

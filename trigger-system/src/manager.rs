@@ -89,8 +89,8 @@ impl TriggerManager {
         if now.duration_since(self.last_config_update) > CONFIG_UPDATE_FREQUENCY {
             // Update trigger configs.
             log::info!("refreshing trigger configs");
-            self.configs = self.cfg_loader.get_all_configurations().await?;
             self.last_config_update = now;
+            self.configs = self.cfg_loader.get_all_configurations().await?;
             log::info!("trigger config refresh complete");
         }
 
@@ -102,7 +102,8 @@ impl TriggerManager {
         Ok(())
     }
 
-    async fn asynchronous_main_loop(&mut self) {
+    #[tokio::main]
+    pub async fn start(&mut self) {
         loop {
             if self.stop_rx.try_recv().is_ok() {
                 break;
@@ -114,9 +115,5 @@ impl TriggerManager {
 
             thread::sleep(EXIT_POLL_FREQUENCY);
         }
-    }
-
-    pub fn start(&mut self) {
-        async_std::task::block_on(self.asynchronous_main_loop());
     }
 }
