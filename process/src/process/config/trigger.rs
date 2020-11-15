@@ -60,9 +60,8 @@ impl ConfigReaderConfiguration {
             ConfigReaderConfiguration::DataStore {
                 project_id,
                 credentials_file_path,
-            } => Ok(Box::from(DatastoreTriggerConfigLoader::from_credentials(
-                project_id,
-                credentials_file_path,
+            } => Ok(Box::from(async_std::task::block_on(
+                DatastoreTriggerConfigLoader::from_credentials(project_id, credentials_file_path),
             )?)),
         }
     }
@@ -91,10 +90,12 @@ impl QueueWriterConfiguration {
                 project_id,
                 credentials_file_path,
                 topic,
-            } => Ok(Box::from(PubsubTriggerQueueWriter::from_credentials(
-                project_id,
-                credentials_file_path,
-                topic,
+            } => Ok(Box::from(async_std::task::block_on(
+                PubsubTriggerQueueWriter::from_credentials(
+                    project_id,
+                    credentials_file_path,
+                    topic,
+                ),
             )?)),
         }
     }

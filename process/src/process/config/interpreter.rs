@@ -65,9 +65,8 @@ impl ConfigReaderConfiguration {
             ConfigReaderConfiguration::DataStore {
                 project_id,
                 credentials_file_path,
-            } => Ok(Box::from(DatastoreActionConfigLoader::from_credentials(
-                project_id,
-                credentials_file_path,
+            } => Ok(Box::from(async_std::task::block_on(
+                DatastoreActionConfigLoader::from_credentials(project_id, credentials_file_path),
             )?)),
         }
     }
@@ -99,10 +98,12 @@ impl QueueWriterConfiguration {
                 project_id,
                 credentials_file_path,
                 topic,
-            } => Ok(Box::from(PubSubActionManifestWriter::from_credentials(
-                project_id,
-                credentials_file_path,
-                topic,
+            } => Ok(Box::from(async_std::task::block_on(
+                PubSubActionManifestWriter::from_credentials(
+                    project_id,
+                    credentials_file_path,
+                    topic,
+                ),
             )?)),
         }
     }
@@ -134,10 +135,12 @@ impl QueueReaderConfiguration {
                 project_id,
                 credentials_file_path,
                 subscription,
-            } => Ok(Box::from(PubSubTriggerReader::from_credentials(
-                project_id,
-                credentials_file_path,
-                subscription,
+            } => Ok(Box::from(async_std::task::block_on(
+                PubSubTriggerReader::from_credentials(
+                    project_id,
+                    credentials_file_path,
+                    subscription,
+                ),
             )?)),
         }
     }

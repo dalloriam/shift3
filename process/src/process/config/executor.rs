@@ -45,13 +45,13 @@ impl QueueReaderConfiguration {
                 project_id,
                 credentials_file_path,
                 subscription,
-            } => Ok(Box::from(
+            } => Ok(Box::from(async_std::task::block_on(
                 PubsubActionManifestQueueReader::from_credentials(
                     project_id,
                     credentials_file_path,
                     subscription,
-                )?,
-            )),
+                ),
+            )?)),
         }
     }
 }

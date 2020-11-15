@@ -1,6 +1,6 @@
 use std::sync::mpsc;
 
-use anyhow::{Error, Result};
+use anyhow::Result;
 
 use protocol::{ActionManifest, Trigger};
 
@@ -56,8 +56,6 @@ impl TriggerManager {
     }
 
     async fn pull_trigger(&self) -> Result<()> {
-        let trigger_maybe = self.queue_reader.pull_trigger().await?;
-
         if let Some(mut message) = self.queue_reader.pull_trigger().await? {
             let trigger = message.data()?;
             self.interpret_trigger(trigger).await?;
