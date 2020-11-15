@@ -39,19 +39,23 @@ pub enum QueueReaderConfiguration {
 }
 
 impl QueueReaderConfiguration {
-    fn into_instance(self) -> Result<Box<dyn ActionManifestQueueReader + Send>> {
-        match self {
+    #[tokio::main]
+    async fn into_instance(self) -> Result<Box<dyn ActionManifestQueueReader + Send>> {
+        let b: Box<dyn ActionManifestQueueReader + Send> = match self {
             QueueReaderConfiguration::PubSub {
                 project_id,
                 credentials_file_path,
                 subscription,
-            } => Ok(Box::from(async_std::task::block_on(
+            } => Box::from(
                 PubsubActionManifestQueueReader::from_credentials(
                     project_id,
                     credentials_file_path,
                     subscription,
-                ),
-            )?)),
-        }
+                )
+                .await?,
+            ),
+        };
+
+        Ok(b)
     }
 }

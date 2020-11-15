@@ -65,7 +65,8 @@ impl TriggerManager {
         Ok(())
     }
 
-    async fn asynchronous_main_loop(&self) {
+    #[tokio::main]
+    pub async fn start(&self) {
         log::debug!("begin pulling trigger data");
 
         loop {
@@ -77,9 +78,5 @@ impl TriggerManager {
                 break;
             }
         }
-    }
-
-    pub fn start(&self) {
-        async_std::task::block_on(self.asynchronous_main_loop());
     }
 }

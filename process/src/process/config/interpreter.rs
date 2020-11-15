@@ -57,18 +57,22 @@ pub enum ConfigReaderConfiguration {
 
 impl ConfigReaderConfiguration {
     /// Returns a usable action config reader from the configuration struct.
-    pub fn into_instance(self) -> Result<Box<dyn ActionConfigReader + Send>> {
-        match self {
+    #[tokio::main]
+    pub async fn into_instance(self) -> Result<Box<dyn ActionConfigReader + Send>> {
+        let b: Box<dyn ActionConfigReader + Send> = match self {
             ConfigReaderConfiguration::File { file } => {
-                Ok(Box::from(FileActionConfigReader::new(file)?))
+                Box::from(FileActionConfigReader::new(file)?)
             }
             ConfigReaderConfiguration::DataStore {
                 project_id,
                 credentials_file_path,
-            } => Ok(Box::from(async_std::task::block_on(
-                DatastoreActionConfigLoader::from_credentials(project_id, credentials_file_path),
-            )?)),
-        }
+            } => Box::from(
+                DatastoreActionConfigLoader::from_credentials(project_id, credentials_file_path)
+                    .await?,
+            ),
+        };
+
+        Ok(b)
     }
 }
 
@@ -89,23 +93,27 @@ pub enum QueueWriterConfiguration {
 }
 
 impl QueueWriterConfiguration {
-    pub fn into_instance(self) -> Result<Box<dyn ActionManifestQueueWriter + Send>> {
-        match self {
+    #[tokio::main]
+    pub async fn into_instance(self) -> Result<Box<dyn ActionManifestQueueWriter + Send>> {
+        let b: Box<dyn ActionManifestQueueWriter + Send> = match self {
             QueueWriterConfiguration::Directory { path } => {
-                Ok(Box::from(FileActionManifestWriter::new(path)?))
+                Box::from(FileActionManifestWriter::new(path)?)
             }
             QueueWriterConfiguration::PubSub {
                 project_id,
                 credentials_file_path,
                 topic,
-            } => Ok(Box::from(async_std::task::block_on(
+            } => Box::from(
                 PubSubActionManifestWriter::from_credentials(
                     project_id,
                     credentials_file_path,
                     topic,
-                ),
-            )?)),
-        }
+                )
+                .await?,
+            ),
+        };
+
+        Ok(b)
     }
 }
 
@@ -126,23 +134,27 @@ pub enum QueueReaderConfiguration {
 }
 
 impl QueueReaderConfiguration {
-    pub fn into_instance(self) -> Result<Box<dyn TriggerQueueReader + Send>> {
-        match self {
+    #[tokio::main]
+    pub async fn into_instance(self) -> Result<Box<dyn TriggerQueueReader + Send>> {
+        let b: Box<dyn TriggerQueueReader + Send> = match self {
             QueueReaderConfiguration::Directory { path } => {
-                Ok(Box::from(FileTriggerQueueReader::new(path)?))
+                Box::from(FileTriggerQueueReader::new(path)?)
             }
             QueueReaderConfiguration::PubSub {
                 project_id,
                 credentials_file_path,
                 subscription,
-            } => Ok(Box::from(async_std::task::block_on(
+            } => Box::from(
                 PubSubTriggerReader::from_credentials(
                     project_id,
                     credentials_file_path,
                     subscription,
-                ),
-            )?)),
-        }
+                )
+                .await?,
+            ),
+        };
+
+        Ok(b)
     }
 }
 
