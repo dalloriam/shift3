@@ -22,10 +22,6 @@ pub enum AuthError {
 type Result<T> = std::result::Result<T, AuthError>;
 
 /// Provides google cloud authentication with a simple API.
-///
-/// It requires less boilerplate than the bare `yup_oauth2` provider, and it implements
-/// the `oauth::GetToken` trait, which means it can be used directly with Pubsub & Datastore clients.
-// TODO: Update docs.
 pub struct AuthProvider {
     credentials: ApplicationCredentials,
 }
