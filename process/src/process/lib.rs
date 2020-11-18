@@ -1,5 +1,6 @@
 mod config;
 mod node;
+mod resource_manager;
 
 pub use config::Configuration;
 pub use node::Node;

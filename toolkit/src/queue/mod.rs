@@ -1,2 +1,3 @@
-#[cfg(webserver)]
-mod web;
+mod memory;
+
+pub use memory::MemoryQueue;

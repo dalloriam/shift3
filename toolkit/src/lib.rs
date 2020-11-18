@@ -3,7 +3,7 @@
 //! Generic utility library.
 
 pub mod message;
-//pub mod queue;
+pub mod queue;
 mod stop;
 pub mod thread;
 
