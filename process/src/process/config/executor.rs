@@ -2,16 +2,14 @@ use std::sync::Arc;
 
 use anyhow::Result;
 
-use plugin_host::PluginHost;
-
 use serde::{Deserialize, Serialize};
 
 use action_executor::{
-    iface_impl::PubsubActionManifestQueueReader, ActionManifestQueueReader, ExecutorSystem,
-    ExecutorSystemConfig,
+    iface_impl::{InMemoryActionManifestQueueReader, PubsubActionManifestQueueReader},
+    ActionManifestQueueReader, ExecutorSystem, ExecutorSystemConfig,
 };
 
-use crate::Service;
+use crate::{ResourceManager, Service};
 
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
 pub struct ExecutorSystemConfiguration {
@@ -19,11 +17,14 @@ pub struct ExecutorSystemConfiguration {
 }
 
 impl ExecutorSystemConfiguration {
-    pub async fn into_instance(self, plugin_host: Arc<PluginHost>) -> Result<Service> {
-        let queue_reader = self.queue_reader.into_instance().await?;
+    pub async fn into_instance(self, resource_manager: Arc<ResourceManager>) -> Result<Service> {
+        let queue_reader = self
+            .queue_reader
+            .into_instance(resource_manager.clone())
+            .await?;
         Ok(Box::from(ExecutorSystem::start(ExecutorSystemConfig {
             queue_reader,
-            plugin_host,
+            plugin_host: resource_manager.get_plugin_host(),
         })))
     }
 }
@@ -36,10 +37,16 @@ pub enum QueueReaderConfiguration {
         credentials_file_path: String,
         subscription: String,
     },
+    InMemory {
+        topic: String,
+    },
 }
 
 impl QueueReaderConfiguration {
-    async fn into_instance(self) -> Result<Box<dyn ActionManifestQueueReader + Send>> {
+    async fn into_instance(
+        self,
+        resource_manager: Arc<ResourceManager>,
+    ) -> Result<Box<dyn ActionManifestQueueReader + Send>> {
         let b: Box<dyn ActionManifestQueueReader + Send> = match self {
             QueueReaderConfiguration::PubSub {
                 project_id,
@@ -52,6 +59,9 @@ impl QueueReaderConfiguration {
                     subscription,
                 )
                 .await?,
+            ),
+            QueueReaderConfiguration::InMemory { topic } => Box::from(
+                InMemoryActionManifestQueueReader::new(resource_manager.get_memory_queue(&topic)?),
             ),
         };
 

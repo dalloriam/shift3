@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use anyhow::{anyhow, Result};
@@ -31,7 +30,7 @@ impl ResourceManager {
         return self.plugin_host.clone();
     }
 
-    pub fn get_memory_queue<P: AsRef<Path>>(&self, queue_name: &str) -> Result<Arc<MemoryQueue>> {
+    pub fn get_memory_queue(&self, queue_name: &str) -> Result<Arc<MemoryQueue>> {
         let mut queues_guard = self.queues.lock().map_err(|e| anyhow!(e.to_string()))?;
         let queues = &mut *queues_guard;
 

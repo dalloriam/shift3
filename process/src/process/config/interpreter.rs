@@ -3,16 +3,15 @@ use std::sync::Arc;
 
 use anyhow::Result;
 
-use plugin_host::PluginHost;
-
 use serde::{Deserialize, Serialize};
 
-use crate::Service;
+use crate::{ResourceManager, Service};
 
 use trigger_interpreter::{
     iface_impl::{
         DatastoreActionConfigLoader, FileActionConfigReader, FileActionManifestWriter,
-        FileTriggerQueueReader, PubSubActionManifestWriter, PubSubTriggerReader,
+        FileTriggerQueueReader, InMemoryActionManifestQueueWriter, InMemoryTriggerQueueReader,
+        PubSubActionManifestWriter, PubSubTriggerReader,
     },
     ActionConfigReader, ActionManifestQueueWriter, TriggerInterpreter, TriggerQueueReader,
 };
@@ -27,10 +26,19 @@ pub struct TriggerInterpreterConfiguration {
 
 impl TriggerInterpreterConfiguration {
     /// Converts the trigger interpreter configuration to a usable service instance.
-    pub async fn into_instance(self, _plugin_host: Arc<PluginHost>) -> Result<Service> {
-        let cfg_reader = self.config_reader.into_instance().await?;
-        let queue_writer = self.queue_writer.into_instance().await?;
-        let queue_reader = self.queue_reader.into_instance().await?;
+    pub async fn into_instance(self, resource_manager: Arc<ResourceManager>) -> Result<Service> {
+        let cfg_reader = self
+            .config_reader
+            .into_instance(resource_manager.clone())
+            .await?;
+        let queue_writer = self
+            .queue_writer
+            .into_instance(resource_manager.clone())
+            .await?;
+        let queue_reader = self
+            .queue_reader
+            .into_instance(resource_manager.clone())
+            .await?;
 
         Ok(Box::from(TriggerInterpreter::start(
             queue_reader,
@@ -57,7 +65,10 @@ pub enum ConfigReaderConfiguration {
 
 impl ConfigReaderConfiguration {
     /// Returns a usable action config reader from the configuration struct.
-    pub async fn into_instance(self) -> Result<Box<dyn ActionConfigReader + Send>> {
+    pub async fn into_instance(
+        self,
+        _resource_manager: Arc<ResourceManager>,
+    ) -> Result<Box<dyn ActionConfigReader + Send>> {
         let b: Box<dyn ActionConfigReader + Send> = match self {
             ConfigReaderConfiguration::File { file } => {
                 Box::from(FileActionConfigReader::new(file)?)
@@ -89,10 +100,16 @@ pub enum QueueWriterConfiguration {
         credentials_file_path: String,
         topic: String,
     },
+    InMemory {
+        topic: String,
+    },
 }
 
 impl QueueWriterConfiguration {
-    pub async fn into_instance(self) -> Result<Box<dyn ActionManifestQueueWriter + Send>> {
+    pub async fn into_instance(
+        self,
+        resource_manager: Arc<ResourceManager>,
+    ) -> Result<Box<dyn ActionManifestQueueWriter + Send>> {
         let b: Box<dyn ActionManifestQueueWriter + Send> = match self {
             QueueWriterConfiguration::Directory { path } => {
                 Box::from(FileActionManifestWriter::new(path)?)
@@ -108,6 +125,9 @@ impl QueueWriterConfiguration {
                     topic,
                 )
                 .await?,
+            ),
+            QueueWriterConfiguration::InMemory { topic } => Box::from(
+                InMemoryActionManifestQueueWriter::new(resource_manager.get_memory_queue(&topic)?),
             ),
         };
 
@@ -129,10 +149,16 @@ pub enum QueueReaderConfiguration {
         credentials_file_path: String,
         subscription: String,
     },
+    InMemory {
+        topic: String,
+    },
 }
 
 impl QueueReaderConfiguration {
-    pub async fn into_instance(self) -> Result<Box<dyn TriggerQueueReader + Send>> {
+    pub async fn into_instance(
+        self,
+        resource_manager: Arc<ResourceManager>,
+    ) -> Result<Box<dyn TriggerQueueReader + Send>> {
         let b: Box<dyn TriggerQueueReader + Send> = match self {
             QueueReaderConfiguration::Directory { path } => {
                 Box::from(FileTriggerQueueReader::new(path)?)
@@ -148,6 +174,9 @@ impl QueueReaderConfiguration {
                     subscription,
                 )
                 .await?,
+            ),
+            QueueReaderConfiguration::InMemory { topic } => Box::from(
+                InMemoryTriggerQueueReader::new(resource_manager.get_memory_queue(&topic)?),
             ),
         };
 

@@ -3,15 +3,15 @@ use std::sync::Arc;
 
 use anyhow::Result;
 
-use plugin_host::PluginHost;
-
 use serde::{Deserialize, Serialize};
 
-use crate::Service;
+use crate::{ResourceManager, Service};
 
 use trigger_system::{
     iface_impl::config::{datastore::DatastoreTriggerConfigLoader, file::FileTriggerConfigLoader},
-    iface_impl::trigger_writer::{DirectoryTriggerQueueWriter, PubsubTriggerQueueWriter},
+    iface_impl::trigger_writer::{
+        DirectoryTriggerQueueWriter, InMemoryTriggerQueueWriter, PubsubTriggerQueueWriter,
+    },
     TriggerConfigLoader, TriggerQueueWriter, TriggerSystem, TriggerSystemConfig,
 };
 
@@ -24,13 +24,19 @@ pub struct TriggerSystemConfiguration {
 
 impl TriggerSystemConfiguration {
     /// Converts the trigger system configuration to a usable service instance.
-    pub async fn into_instance(self, plugin_host: Arc<PluginHost>) -> Result<Service> {
-        let config_loader = self.config_reader.into_instance().await?;
-        let queue_writer = self.queue_writer.into_instance().await?;
+    pub async fn into_instance(self, resource_manager: Arc<ResourceManager>) -> Result<Service> {
+        let config_loader = self
+            .config_reader
+            .into_instance(resource_manager.clone())
+            .await?;
+        let queue_writer = self
+            .queue_writer
+            .into_instance(resource_manager.clone())
+            .await?;
         Ok(Box::from(TriggerSystem::start(TriggerSystemConfig {
             config_loader,
             queue_writer,
-            plugin_host,
+            plugin_host: resource_manager.get_plugin_host(),
         })))
     }
 }
@@ -52,7 +58,10 @@ pub enum ConfigReaderConfiguration {
 
 impl ConfigReaderConfiguration {
     /// Returns a usable trigger config loader from the configuration struct.
-    pub async fn into_instance(self) -> Result<Box<dyn TriggerConfigLoader + Send>> {
+    pub async fn into_instance(
+        self,
+        _resource_manager: Arc<ResourceManager>,
+    ) -> Result<Box<dyn TriggerConfigLoader + Send>> {
         let r: Box<dyn TriggerConfigLoader + Send> = match self {
             ConfigReaderConfiguration::File { file } => {
                 Box::from(FileTriggerConfigLoader::new(file)?)
@@ -81,10 +90,16 @@ pub enum QueueWriterConfiguration {
         credentials_file_path: String,
         topic: String,
     },
+    InMemory {
+        topic: String,
+    },
 }
 
 impl QueueWriterConfiguration {
-    pub async fn into_instance(self) -> Result<Box<dyn TriggerQueueWriter + Send>> {
+    pub async fn into_instance(
+        self,
+        resource_manager: Arc<ResourceManager>,
+    ) -> Result<Box<dyn TriggerQueueWriter + Send>> {
         let r: Box<dyn TriggerQueueWriter + Send> = match self {
             QueueWriterConfiguration::Directory { path } => {
                 Box::from(DirectoryTriggerQueueWriter::new(path)?)
@@ -100,6 +115,9 @@ impl QueueWriterConfiguration {
                     topic,
                 )
                 .await?,
+            ),
+            QueueWriterConfiguration::InMemory { topic } => Box::from(
+                InMemoryTriggerQueueWriter::new(resource_manager.get_memory_queue(&topic)?),
             ),
         };
 

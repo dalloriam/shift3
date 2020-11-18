@@ -1,6 +1,7 @@
 use std::{
     fs,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 use anyhow::{ensure, Result};
@@ -16,6 +17,7 @@ use protocol::Trigger;
 use serde::de::DeserializeOwned;
 
 use toolkit::message::{Error as MessageError, Message};
+use toolkit::queue::MemoryQueue;
 
 use crate::interface::TriggerQueueReader;
 
@@ -111,5 +113,23 @@ where
             })?;
 
         Ok(deserialized)
+    }
+}
+
+pub struct InMemoryTriggerQueueReader {
+    queue: Arc<MemoryQueue>,
+}
+
+impl InMemoryTriggerQueueReader {
+    pub fn new(queue: Arc<MemoryQueue>) -> Self {
+        Self { queue }
+    }
+}
+
+#[async_trait]
+impl TriggerQueueReader for InMemoryTriggerQueueReader {
+    async fn pull_trigger(&self) -> Result<Option<Box<dyn Message<Trigger> + Send>>> {
+        let msg: Option<Box<dyn Message<Trigger> + Send>> = self.queue.pull()?;
+        Ok(msg)
     }
 }
