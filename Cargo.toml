@@ -10,5 +10,6 @@ members = [
     "plugin-core",
     "plugin-host",
     "plugin-builtins/directory_watch",
-    "plugin-builtins/notify"
+    "plugin-builtins/notify",
+    "rulecreator"
 ]

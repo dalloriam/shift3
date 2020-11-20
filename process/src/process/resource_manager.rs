@@ -1,10 +1,12 @@
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use anyhow::{anyhow, Result};
 
 use plugin_host::PluginHost;
 
+use toolkit::db::sled::SledStore;
 use toolkit::queue::MemoryQueue;
 
 use crate::Configuration;
@@ -16,6 +18,8 @@ pub struct ResourceManager {
     plugin_host: Arc<PluginHost>,
 
     queues: Mutex<HashMap<String, Arc<MemoryQueue>>>,
+
+    sleds: Mutex<HashMap<PathBuf, Arc<SledStore>>>,
 }
 
 impl ResourceManager {
@@ -23,6 +27,7 @@ impl ResourceManager {
         Ok(ResourceManager {
             plugin_host: Arc::from(PluginHost::initialize(&config.plugin_paths)?),
             queues: Mutex::new(HashMap::<String, Arc<MemoryQueue>>::new()),
+            sleds: Mutex::new(HashMap::<PathBuf, Arc<SledStore>>::new()),
         })
     }
 
@@ -46,5 +51,20 @@ impl ResourceManager {
         queues.insert(String::from(queue_name), queue.clone());
 
         Ok(queue)
+    }
+
+    pub fn get_embedded_store<P: AsRef<Path>>(&self, path: P) -> Result<Arc<SledStore>> {
+        let mut sleds_guard = self.sleds.lock().map_err(|e| anyhow!(e.to_string()))?;
+        let sleds = &mut *sleds_guard;
+
+        if let Some(s) = sleds.get(path.as_ref()) {
+            return Ok(s.clone());
+        }
+
+        let sled = Arc::from(SledStore::new(path.as_ref())?);
+
+        sleds.insert(PathBuf::from(path.as_ref()), sled.clone());
+
+        Ok(sled)
     }
 }

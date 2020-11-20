@@ -5,7 +5,7 @@ use std::sync::Mutex;
 
 use plugin_core::{Error, TriggerPlugin};
 
-use protocol::{Trigger, TriggerConfiguration};
+use protocol::{RuleID, Trigger, TriggerConfiguration};
 
 use serde::{Deserialize, Serialize};
 
@@ -21,7 +21,7 @@ struct TriggerData {
 
 #[derive(Default)]
 pub struct DirectoryWatcher {
-    seen_files: Mutex<HashMap<i64, HashSet<PathBuf>>>,
+    seen_files: Mutex<HashMap<RuleID, HashSet<PathBuf>>>,
 }
 
 impl TriggerPlugin for DirectoryWatcher {
@@ -54,7 +54,7 @@ impl TriggerPlugin for DirectoryWatcher {
                         // Add a trigger.
                         seen_files.insert(entry.path());
                         results.push(Trigger {
-                            rule: cfg.rule,
+                            rule: cfg.rule.clone(),
                             trigger_type: cfg.trigger_type.clone(),
                             data: serde_json::to_string(&TriggerData {
                                 file_name: entry.file_name().to_string_lossy().to_string(),
@@ -79,7 +79,7 @@ impl TriggerPlugin for DirectoryWatcher {
                     initial_files.insert(entry.path());
                 }
 
-                seen_files.insert(cfg.rule, initial_files);
+                seen_files.insert(cfg.rule.clone(), initial_files);
 
                 Ok(Vec::new())
             }

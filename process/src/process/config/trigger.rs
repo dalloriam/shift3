@@ -8,7 +8,10 @@ use serde::{Deserialize, Serialize};
 use crate::{ResourceManager, Service};
 
 use trigger_system::{
-    iface_impl::config::{datastore::DatastoreTriggerConfigLoader, file::FileTriggerConfigLoader},
+    iface_impl::config::{
+        datastore::DatastoreTriggerConfigLoader, embedded::EmbeddedTriggerConfigLoader,
+        file::FileTriggerConfigLoader,
+    },
     iface_impl::trigger_writer::{
         DirectoryTriggerQueueWriter, InMemoryTriggerQueueWriter, PubsubTriggerQueueWriter,
     },
@@ -54,13 +57,16 @@ pub enum ConfigReaderConfiguration {
     File {
         file: PathBuf,
     },
+    Embedded {
+        directory: PathBuf,
+    },
 }
 
 impl ConfigReaderConfiguration {
     /// Returns a usable trigger config loader from the configuration struct.
     pub async fn into_instance(
         self,
-        _resource_manager: Arc<ResourceManager>,
+        resource_manager: Arc<ResourceManager>,
     ) -> Result<Box<dyn TriggerConfigLoader + Send>> {
         let r: Box<dyn TriggerConfigLoader + Send> = match self {
             ConfigReaderConfiguration::File { file } => {
@@ -72,6 +78,9 @@ impl ConfigReaderConfiguration {
             } => Box::from(
                 DatastoreTriggerConfigLoader::from_credentials(project_id, credentials_file_path)
                     .await?,
+            ),
+            ConfigReaderConfiguration::Embedded { directory } => Box::from(
+                EmbeddedTriggerConfigLoader::new(resource_manager.get_embedded_store(&directory)?)?,
             ),
         };
 

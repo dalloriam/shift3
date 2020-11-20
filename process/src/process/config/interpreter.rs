@@ -9,9 +9,9 @@ use crate::{ResourceManager, Service};
 
 use trigger_interpreter::{
     iface_impl::{
-        DatastoreActionConfigLoader, FileActionConfigReader, FileActionManifestWriter,
-        FileTriggerQueueReader, InMemoryActionManifestQueueWriter, InMemoryTriggerQueueReader,
-        PubSubActionManifestWriter, PubSubTriggerReader,
+        DatastoreActionConfigLoader, EmbeddedActionConfigReader, FileActionConfigReader,
+        FileActionManifestWriter, FileTriggerQueueReader, InMemoryActionManifestQueueWriter,
+        InMemoryTriggerQueueReader, PubSubActionManifestWriter, PubSubTriggerReader,
     },
     ActionConfigReader, ActionManifestQueueWriter, TriggerInterpreter, TriggerQueueReader,
 };
@@ -61,13 +61,16 @@ pub enum ConfigReaderConfiguration {
         project_id: String,
         credentials_file_path: String,
     },
+    Embedded {
+        directory: PathBuf,
+    },
 }
 
 impl ConfigReaderConfiguration {
     /// Returns a usable action config reader from the configuration struct.
     pub async fn into_instance(
         self,
-        _resource_manager: Arc<ResourceManager>,
+        resource_manager: Arc<ResourceManager>,
     ) -> Result<Box<dyn ActionConfigReader + Send>> {
         let b: Box<dyn ActionConfigReader + Send> = match self {
             ConfigReaderConfiguration::File { file } => {
@@ -79,6 +82,9 @@ impl ConfigReaderConfiguration {
             } => Box::from(
                 DatastoreActionConfigLoader::from_credentials(project_id, credentials_file_path)
                     .await?,
+            ),
+            ConfigReaderConfiguration::Embedded { directory } => Box::from(
+                EmbeddedActionConfigReader::new(resource_manager.get_embedded_store(&directory)?)?,
             ),
         };
 

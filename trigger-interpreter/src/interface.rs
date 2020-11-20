@@ -15,7 +15,7 @@ pub trait TriggerQueueReader {
 /// Trait describing an object capable of pulling a trigger from a queue.
 #[async_trait]
 pub trait ActionConfigReader {
-    async fn get_rule(&self, id: RuleID) -> Result<Rule>;
+    async fn get_rule(&self, id: &RuleID) -> Result<Rule>;
 }
 
 /// Trait describing an object capable of pushing an action manifest to a queue.
