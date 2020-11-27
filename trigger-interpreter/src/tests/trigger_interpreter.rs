@@ -29,11 +29,11 @@ fn in_memory_full_loop() {
         action_type: String::from("notify"),
     };
     let mut action_configs = HashMap::new();
-    action_configs.insert(1, rule.clone());
+    action_configs.insert("1".into(), rule.clone());
 
     let file_name = "test";
     let triggers = vec![Trigger {
-        rule: 1,
+        rule: "1".into(),
         trigger_type: String::from("file"),
         data: String::from(format!("{{\"file_name\": \"{}\"}}", file_name)),
     }];
@@ -65,7 +65,7 @@ fn in_memory_full_loop() {
     assert_eq!(
         queue_writer_ref.queue.first().unwrap(),
         &ActionManifest {
-            rule: 1,
+            rule: "1".into(),
             action_type: rule.action_type.clone(),
             data: String::from(format!(
                 "{{\"body\": \"New file: {}\", \"title\": \"ShifTTT: New File Created\"}}",
@@ -81,7 +81,7 @@ fn in_memory_action_config_missing() {
 
     let file_name = "test";
     let triggers = vec![Trigger {
-        rule: 1,
+        rule: "1".into(),
         trigger_type: String::from("file"),
         data: String::from(format!("{{\"file_name\": \"{}\"}}", file_name)),
     }];

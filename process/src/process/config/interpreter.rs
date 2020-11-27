@@ -193,8 +193,13 @@ impl QueueReaderConfiguration {
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
+    use std::sync::Arc;
 
-    use super::{ConfigReaderConfiguration, QueueReaderConfiguration, QueueWriterConfiguration};
+    use super::{
+        ConfigReaderConfiguration, QueueReaderConfiguration, QueueWriterConfiguration,
+        ResourceManager,
+    };
+    use crate::Configuration;
 
     macro_rules! parse_ok {
         ($t: ident, $(($func_name:ident, $file_name:ident, $eq_to:expr),)*) => {
@@ -209,7 +214,7 @@ mod tests {
 
                     // We don't care about whether it failed.
                     // TLDR; Increase coverage
-                    match deserialized.into_instance().await {
+                    match deserialized.into_instance(Arc::from(ResourceManager::new(&Configuration::default()).unwrap())).await {
                         Ok(_) => {},
                         Err(_) => {}
                     }
