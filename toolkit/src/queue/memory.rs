@@ -51,6 +51,7 @@ where
     }
 }
 
+/// An in-memory queue for sending messages between components of the generic process.
 pub struct MemoryQueue {
     persist_path: Option<PathBuf>,
 
@@ -58,6 +59,7 @@ pub struct MemoryQueue {
 }
 
 impl MemoryQueue {
+    /// Create a basic in-memory queue.
     pub fn new() -> MemoryQueue {
         MemoryQueue {
             persist_path: None,
@@ -65,6 +67,7 @@ impl MemoryQueue {
         }
     }
 
+    /// Create a memory queue with a persistence path.
     pub fn with_persist_path<P: Into<PathBuf>>(mut self, path: P) -> Self {
         self.persist_path = Some(path.into());
         self
@@ -76,6 +79,7 @@ impl MemoryQueue {
         })
     }
 
+    /// Publish a message to the queue.
     pub fn publish<T: Serialize>(&self, body: T) -> Result<()> {
         let message = MemoryMessage::new(body)?;
 
@@ -87,6 +91,7 @@ impl MemoryQueue {
         Ok(())
     }
 
+    /// Pulls a single message from the queue.
     pub fn pull<T: DeserializeOwned + Send + 'static>(
         &self,
     ) -> Result<Option<Box<dyn Message<T> + Send>>> {

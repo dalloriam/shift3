@@ -71,11 +71,13 @@ where
         })
     }
 
+    /// Flush the store to disk.
     pub fn flush(&self) -> Result<()> {
         self.tree.flush().context(FailedToFlush)?;
         Ok(())
     }
 
+    /// Get an entity from this store by its ID.
     pub fn get(&self, id: &str) -> Result<Option<T>> {
         match self.tree.get(id).context(FailedToReadItem)? {
             Some(item_ivec) => {
@@ -87,6 +89,7 @@ where
         }
     }
 
+    /// Insert a new entity to this store.
     pub fn insert(&self, entity: &T) -> Result<String> {
         // Serialize the entity.
         let serialized_bytes = serde_json::to_vec(entity).context(FailedToSerializeItem)?;
@@ -107,6 +110,7 @@ where
         Ok(id_str)
     }
 
+    /// Lists all entities of this store's type.
     pub fn list_all(&self) -> Result<Vec<T>> {
         // TODO: Paging.
 

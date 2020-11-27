@@ -23,7 +23,7 @@ fn main() {
         id: 1,
         rule: r_id.clone(),
         trigger_type: "directory_watch".into(),
-        data: "{\"directory\": \"/home/wdussault/temp\"}".into(),
+        data: "{\"directory\": \"/home/wduss/temp\"}".into(),
     };
     trigger_cfgs.insert(&trigger_cfg).unwrap();
 
