@@ -111,7 +111,7 @@ impl QueueWriterConfiguration {
 mod tests {
     use std::path::PathBuf;
 
-    use super::{ConfigReaderConfiguration, QueueWriterConfiguration};
+    use super::*;
 
     macro_rules! parse_ok {
         ($t: ident, $(($name:ident, $eq_to:expr),)*) => {

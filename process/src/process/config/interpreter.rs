@@ -159,7 +159,7 @@ impl QueueReaderConfiguration {
 mod tests {
     use std::path::PathBuf;
 
-    use super::{ConfigReaderConfiguration, QueueReaderConfiguration, QueueWriterConfiguration};
+    use super::*;
 
     macro_rules! parse_ok {
         ($t: ident, $(($func_name:ident, $file_name:ident, $eq_to:expr),)*) => {
@@ -269,5 +269,32 @@ mod tests {
         QueueReaderConfiguration,
 
         (queue_read_gibberish, queue_gibberish),
+    }
+
+    #[tokio::test]
+    async fn trigger_system_config() {
+        let host = PluginHost::default();
+
+        let expected_cfg = TriggerInterpreterConfiguration {
+            config_reader: ConfigReaderConfiguration::File {
+                file: PathBuf::from("a.json"),
+            },
+            queue_reader: QueueReaderConfiguration::Directory {
+                path: PathBuf::from("bing/"),
+            },
+            queue_writer: QueueWriterConfiguration::Directory {
+                path: PathBuf::from("bong/"),
+            },
+        };
+
+        const DATA_RAW: &str = include_str!("test_data/interpreter_ok.json");
+
+        let deserialized: TriggerInterpreterConfiguration = serde_json::from_str(DATA_RAW).unwrap();
+        assert_eq!(deserialized, expected_cfg);
+
+        match deserialized.into_instance(Arc::from(host)).await {
+            Ok(_) => {}
+            Err(_) => {}
+        }
     }
 }
