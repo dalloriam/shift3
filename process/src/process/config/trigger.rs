@@ -119,7 +119,7 @@ mod tests {
                 #[tokio::test]
                 async fn $name() {
                     const DATA_RAW: &str =
-                        include_str!(concat!("config/test_data/", stringify!($name), ".json"));
+                        include_str!(concat!("test_data/", stringify!($name), ".json"));
 
                     let deserialized: $t = serde_json::from_str(DATA_RAW).unwrap();
                     assert_eq!(deserialized, $eq_to);
