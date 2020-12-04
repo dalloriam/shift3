@@ -1,8 +1,13 @@
 use anyhow::Result;
 
+use async_trait::async_trait;
+
 use protocol::ActionManifest;
 
+use toolkit::message::Message;
+
+#[async_trait]
 pub trait ActionManifestQueueReader {
-    fn batch_ack(&self, ack_ids: Vec<String>) -> Result<()>;
-    fn pull_action_manifests(&self) -> Result<Vec<(String, ActionManifest)>>;
+    async fn pull_action_manifest(&self)
+        -> Result<Option<Box<dyn Message<ActionManifest> + Send>>>;
 }

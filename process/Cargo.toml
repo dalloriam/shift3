@@ -21,6 +21,7 @@ tempdir = "0.3"
 [dependencies]
 action-executor = {path = "../action-executor"}
 anyhow = "1.0"
+tokio-async-std = "1.5"
 clap = "3.0.0-beta.2"
 ctrlc = "3.1"
 env_logger = "0.8"
@@ -29,6 +30,7 @@ log = "0.4"
 plugin-host = {path = "../plugin-host"}
 polyglot = {version = "0.2.1", features = ["json_fmt", "toml_fmt", "yaml_fmt"]}
 serde = {version = "1.0", features = ["derive"]}
-toolkit = {path = "../toolkit"}
+tokio = {version = "0.2.18", features = ["full"]}
+toolkit = {path = "../toolkit", features = []}
 trigger-system = {path = "../trigger-system"}
 trigger-interpreter = {path = "../trigger-interpreter"}

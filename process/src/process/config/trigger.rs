@@ -24,9 +24,9 @@ pub struct TriggerSystemConfiguration {
 
 impl TriggerSystemConfiguration {
     /// Converts the trigger system configuration to a usable service instance.
-    pub fn into_instance(self, plugin_host: Arc<PluginHost>) -> Result<Service> {
-        let config_loader = self.config_reader.into_instance()?;
-        let queue_writer = self.queue_writer.into_instance()?;
+    pub async fn into_instance(self, plugin_host: Arc<PluginHost>) -> Result<Service> {
+        let config_loader = self.config_reader.into_instance().await?;
+        let queue_writer = self.queue_writer.into_instance().await?;
         Ok(Box::from(TriggerSystem::start(TriggerSystemConfig {
             config_loader,
             queue_writer,
@@ -52,19 +52,21 @@ pub enum ConfigReaderConfiguration {
 
 impl ConfigReaderConfiguration {
     /// Returns a usable trigger config loader from the configuration struct.
-    pub fn into_instance(self) -> Result<Box<dyn TriggerConfigLoader + Send>> {
-        match self {
+    pub async fn into_instance(self) -> Result<Box<dyn TriggerConfigLoader + Send>> {
+        let r: Box<dyn TriggerConfigLoader + Send> = match self {
             ConfigReaderConfiguration::File { file } => {
-                Ok(Box::from(FileTriggerConfigLoader::new(file)?))
+                Box::from(FileTriggerConfigLoader::new(file)?)
             }
             ConfigReaderConfiguration::DataStore {
                 project_id,
                 credentials_file_path,
-            } => Ok(Box::from(DatastoreTriggerConfigLoader::from_credentials(
-                project_id,
-                credentials_file_path,
-            )?)),
-        }
+            } => Box::from(
+                DatastoreTriggerConfigLoader::from_credentials(project_id, credentials_file_path)
+                    .await?,
+            ),
+        };
+
+        Ok(r)
     }
 }
 
@@ -82,21 +84,26 @@ pub enum QueueWriterConfiguration {
 }
 
 impl QueueWriterConfiguration {
-    pub fn into_instance(self) -> Result<Box<dyn TriggerQueueWriter + Send>> {
-        match self {
+    pub async fn into_instance(self) -> Result<Box<dyn TriggerQueueWriter + Send>> {
+        let r: Box<dyn TriggerQueueWriter + Send> = match self {
             QueueWriterConfiguration::Directory { path } => {
-                Ok(Box::from(DirectoryTriggerQueueWriter::new(path)?))
+                Box::from(DirectoryTriggerQueueWriter::new(path)?)
             }
             QueueWriterConfiguration::PubSub {
                 project_id,
                 credentials_file_path,
                 topic,
-            } => Ok(Box::from(PubsubTriggerQueueWriter::from_credentials(
-                project_id,
-                credentials_file_path,
-                topic,
-            )?)),
-        }
+            } => Box::from(
+                PubsubTriggerQueueWriter::from_credentials(
+                    project_id,
+                    credentials_file_path,
+                    topic,
+                )
+                .await?,
+            ),
+        };
+
+        Ok(r)
     }
 }
 
@@ -104,13 +111,13 @@ impl QueueWriterConfiguration {
 mod tests {
     use std::path::PathBuf;
 
-    use super::{ConfigReaderConfiguration, QueueWriterConfiguration};
+    use super::*;
 
     macro_rules! parse_ok {
         ($t: ident, $(($name:ident, $eq_to:expr),)*) => {
             $(
-                #[test]
-                fn $name() {
+                #[tokio::test]
+                async fn $name() {
                     const DATA_RAW: &str =
                         include_str!(concat!("test_data/", stringify!($name), ".json"));
 
@@ -118,7 +125,7 @@ mod tests {
                     assert_eq!(deserialized, $eq_to);
 
                     // We don't care about whether it failed.
-                    match deserialized.into_instance() {
+                    match deserialized.into_instance().await {
                         Ok(_) => {},
                         Err(_) => {}
                     }
@@ -190,5 +197,29 @@ mod tests {
         QueueWriterConfiguration,
 
         queue_gibberish,
+    }
+
+    #[tokio::test]
+    async fn trigger_system_config() {
+        let host = PluginHost::default();
+
+        let expected_cfg = TriggerSystemConfiguration {
+            config_reader: ConfigReaderConfiguration::File {
+                file: PathBuf::from("a.json"),
+            },
+            queue_writer: QueueWriterConfiguration::Directory {
+                path: PathBuf::from("bong/"),
+            },
+        };
+
+        const DATA_RAW: &str = include_str!("test_data/trigger_ok.json");
+
+        let deserialized: TriggerSystemConfiguration = serde_json::from_str(DATA_RAW).unwrap();
+        assert_eq!(deserialized, expected_cfg);
+
+        match deserialized.into_instance(Arc::from(host)).await {
+            Ok(_) => {}
+            Err(_) => {}
+        }
     }
 }

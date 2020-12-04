@@ -1,6 +1,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use async_trait::async_trait;
+
 use anyhow::{ensure, Result};
 
 use crate::interface::{TriggerConfigLoader, TriggerConfiguration};
@@ -23,8 +25,9 @@ impl FileTriggerConfigLoader {
     }
 }
 
+#[async_trait]
 impl TriggerConfigLoader for FileTriggerConfigLoader {
-    fn get_all_configurations(&self) -> Result<Vec<TriggerConfiguration>> {
+    async fn get_all_configurations(&self) -> Result<Vec<TriggerConfiguration>> {
         let handle = fs::File::open(&self.path)?;
         let value: Vec<TriggerConfiguration> = serde_json::from_reader(handle)?;
         Ok(value)

@@ -1,11 +1,15 @@
 use anyhow::Error;
 
+use async_trait::async_trait;
+
 pub use protocol::{Trigger, TriggerConfiguration};
 
+#[async_trait]
 pub trait TriggerConfigLoader {
-    fn get_all_configurations(&self) -> Result<Vec<TriggerConfiguration>, Error>;
+    async fn get_all_configurations(&self) -> Result<Vec<TriggerConfiguration>, Error>;
 }
 
+#[async_trait]
 pub trait TriggerQueueWriter {
-    fn push_trigger(&self, trigger: Trigger) -> Result<(), Error>;
+    async fn push_trigger(&self, trigger: Trigger) -> Result<(), Error>;
 }

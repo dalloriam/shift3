@@ -22,7 +22,6 @@ fn basic_test() {
 #[test]
 fn in_memory_full_loop() {
     let rule = Rule {
-        id: 1,
         trigger_config_id: 1,
         action_config: String::from(
             "{\"body\": \"New file: {{file_name}}\", \"title\": \"ShifTTT: New File Created\"}",
@@ -30,19 +29,19 @@ fn in_memory_full_loop() {
         action_type: String::from("notify"),
     };
     let mut action_configs = HashMap::new();
-    action_configs.insert(rule.id, rule.clone());
+    action_configs.insert(1, rule.clone());
 
     let file_name = "test";
-    let trigger = Trigger {
+    let triggers = vec![Trigger {
         rule: 1,
         trigger_type: String::from("file"),
         data: String::from(format!("{{\"file_name\": \"{}\"}}", file_name)),
-    };
-    let mut triggers = HashMap::new();
-    triggers.insert(String::from("1"), trigger);
+    }];
 
     let cfg_loader = Box::new(mock::InMemoryActionConfigReader::new(action_configs));
-    let queue_reader = Box::new(mock::InMemoryQueueReader::new(triggers));
+    let queue_reader = Box::new(Arc::new(Mutex::new(mock::InMemoryQueueReader::new(
+        triggers,
+    ))));
     let queue_writer = Box::new(Arc::new(Mutex::new(mock::InMemoryQueueWriter::new())));
 
     let system = TriggerInterpreter::start(queue_reader.clone(), cfg_loader, queue_writer.clone());
@@ -55,18 +54,18 @@ fn in_memory_full_loop() {
     let mut queue_writer_guard = queue_writer.lock().unwrap();
     let queue_writer_ref = &mut (*queue_writer_guard);
 
-    let mut queue_reader_guard = queue_reader.queue.lock().unwrap();
+    let mut queue_reader_guard = queue_reader.lock().unwrap();
     let queue_reader_ref = &mut (*queue_reader_guard);
 
     // Makes sure the trigger queue is empty
-    assert_eq!(queue_reader_ref.len(), 0);
+    assert_eq!(queue_reader_ref.queue.len(), 0);
 
     // Makes sure the trigger was properly interpreted
     assert_eq!(queue_writer_ref.queue.len(), 1);
     assert_eq!(
         queue_writer_ref.queue.first().unwrap(),
         &ActionManifest {
-            rule: rule.id,
+            rule: 1,
             action_type: rule.action_type.clone(),
             data: String::from(format!(
                 "{{\"body\": \"New file: {}\", \"title\": \"ShifTTT: New File Created\"}}",
@@ -81,16 +80,16 @@ fn in_memory_action_config_missing() {
     let action_configs = HashMap::new();
 
     let file_name = "test";
-    let trigger = Trigger {
+    let triggers = vec![Trigger {
         rule: 1,
         trigger_type: String::from("file"),
         data: String::from(format!("{{\"file_name\": \"{}\"}}", file_name)),
-    };
-    let mut triggers = HashMap::new();
-    triggers.insert(String::from("1"), trigger);
+    }];
 
     let cfg_loader = Box::new(mock::InMemoryActionConfigReader::new(action_configs));
-    let queue_reader = Box::new(mock::InMemoryQueueReader::new(triggers));
+    let queue_reader = Box::new(Arc::new(Mutex::new(mock::InMemoryQueueReader::new(
+        triggers,
+    ))));
     let queue_writer = Box::new(Arc::new(Mutex::new(mock::InMemoryQueueWriter::new())));
 
     let system = TriggerInterpreter::start(queue_reader.clone(), cfg_loader, queue_writer.clone());
@@ -102,11 +101,11 @@ fn in_memory_action_config_missing() {
     let mut queue_writer_guard = queue_writer.lock().unwrap();
     let queue_writer_ref = &mut (*queue_writer_guard);
 
-    let mut queue_reader_guard = queue_reader.queue.lock().unwrap();
+    let mut queue_reader_guard = queue_reader.lock().unwrap();
     let queue_reader_ref = &mut (*queue_reader_guard);
 
-    // Makes sure the trigger queue is the same as it was in the beginning
-    assert_eq!(queue_reader_ref.len(), 1);
+    // Makes sure the trigger wasn't acknowledged.
+    assert_eq!(queue_reader_ref.ack_count(), 0);
 
     // Makes sure the trigger was not interpreted
     assert_eq!(queue_writer_ref.queue.len(), 0);

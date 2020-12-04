@@ -1,0 +1,10 @@
+{
+    "config_reader": {
+        "type": "File",
+        "file": "a.json"
+    },
+    "queue_writer": {
+        "type": "Directory",
+        "path": "bong/"
+    }
+}

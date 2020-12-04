@@ -21,7 +21,7 @@ struct TriggerData {
 
 #[derive(Default)]
 pub struct DirectoryWatcher {
-    seen_files: Mutex<HashMap<u64, HashSet<PathBuf>>>,
+    seen_files: Mutex<HashMap<i64, HashSet<PathBuf>>>,
 }
 
 impl TriggerPlugin for DirectoryWatcher {

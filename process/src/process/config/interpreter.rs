@@ -27,10 +27,10 @@ pub struct TriggerInterpreterConfiguration {
 
 impl TriggerInterpreterConfiguration {
     /// Converts the trigger interpreter configuration to a usable service instance.
-    pub fn into_instance(self, _plugin_host: Arc<PluginHost>) -> Result<Service> {
-        let cfg_reader = self.config_reader.into_instance()?;
-        let queue_writer = self.queue_writer.into_instance()?;
-        let queue_reader = self.queue_reader.into_instance()?;
+    pub async fn into_instance(self, _plugin_host: Arc<PluginHost>) -> Result<Service> {
+        let cfg_reader = self.config_reader.into_instance().await?;
+        let queue_writer = self.queue_writer.into_instance().await?;
+        let queue_reader = self.queue_reader.into_instance().await?;
 
         Ok(Box::from(TriggerInterpreter::start(
             queue_reader,
@@ -57,19 +57,21 @@ pub enum ConfigReaderConfiguration {
 
 impl ConfigReaderConfiguration {
     /// Returns a usable action config reader from the configuration struct.
-    pub fn into_instance(self) -> Result<Box<dyn ActionConfigReader + Send>> {
-        match self {
+    pub async fn into_instance(self) -> Result<Box<dyn ActionConfigReader + Send>> {
+        let b: Box<dyn ActionConfigReader + Send> = match self {
             ConfigReaderConfiguration::File { file } => {
-                Ok(Box::from(FileActionConfigReader::new(file)?))
+                Box::from(FileActionConfigReader::new(file)?)
             }
             ConfigReaderConfiguration::DataStore {
                 project_id,
                 credentials_file_path,
-            } => Ok(Box::from(DatastoreActionConfigLoader::from_credentials(
-                project_id,
-                credentials_file_path,
-            )?)),
-        }
+            } => Box::from(
+                DatastoreActionConfigLoader::from_credentials(project_id, credentials_file_path)
+                    .await?,
+            ),
+        };
+
+        Ok(b)
     }
 }
 
@@ -90,21 +92,26 @@ pub enum QueueWriterConfiguration {
 }
 
 impl QueueWriterConfiguration {
-    pub fn into_instance(self) -> Result<Box<dyn ActionManifestQueueWriter + Send>> {
-        match self {
+    pub async fn into_instance(self) -> Result<Box<dyn ActionManifestQueueWriter + Send>> {
+        let b: Box<dyn ActionManifestQueueWriter + Send> = match self {
             QueueWriterConfiguration::Directory { path } => {
-                Ok(Box::from(FileActionManifestWriter::new(path)?))
+                Box::from(FileActionManifestWriter::new(path)?)
             }
             QueueWriterConfiguration::PubSub {
                 project_id,
                 credentials_file_path,
                 topic,
-            } => Ok(Box::from(PubSubActionManifestWriter::from_credentials(
-                project_id,
-                credentials_file_path,
-                topic,
-            )?)),
-        }
+            } => Box::from(
+                PubSubActionManifestWriter::from_credentials(
+                    project_id,
+                    credentials_file_path,
+                    topic,
+                )
+                .await?,
+            ),
+        };
+
+        Ok(b)
     }
 }
 
@@ -125,35 +132,43 @@ pub enum QueueReaderConfiguration {
 }
 
 impl QueueReaderConfiguration {
-    pub fn into_instance(self) -> Result<Box<dyn TriggerQueueReader + Send>> {
-        match self {
+    pub async fn into_instance(self) -> Result<Box<dyn TriggerQueueReader + Send>> {
+        let b: Box<dyn TriggerQueueReader + Send> = match self {
             QueueReaderConfiguration::Directory { path } => {
-                Ok(Box::from(FileTriggerQueueReader::new(path)?))
+                Box::from(FileTriggerQueueReader::new(path)?)
             }
             QueueReaderConfiguration::PubSub {
                 project_id,
                 credentials_file_path,
                 subscription,
-            } => Ok(Box::from(PubSubTriggerReader::from_credentials(
-                project_id,
-                credentials_file_path,
-                subscription,
-            )?)),
-        }
+            } => Box::from(
+                PubSubTriggerReader::from_credentials(
+                    project_id,
+                    credentials_file_path,
+                    subscription,
+                )
+                .await?,
+            ),
+        };
+
+        Ok(b)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
     use std::path::PathBuf;
 
-    use super::{ConfigReaderConfiguration, QueueReaderConfiguration, QueueWriterConfiguration};
+    use tempdir::TempDir;
+
+    use super::*;
 
     macro_rules! parse_ok {
         ($t: ident, $(($func_name:ident, $file_name:ident, $eq_to:expr),)*) => {
             $(
-                #[test]
-                fn $func_name() {
+                #[tokio::test]
+                async fn $func_name() {
                     const DATA_RAW: &str =
                         include_str!(concat!("test_data/", stringify!($file_name), ".json"));
 
@@ -162,7 +177,7 @@ mod tests {
 
                     // We don't care about whether it failed.
                     // TLDR; Increase coverage
-                    match deserialized.into_instance() {
+                    match deserialized.into_instance().await {
                         Ok(_) => {},
                         Err(_) => {}
                     }
@@ -257,5 +272,57 @@ mod tests {
         QueueReaderConfiguration,
 
         (queue_read_gibberish, queue_gibberish),
+    }
+
+    #[tokio::test]
+    async fn interpreter_system_instanciation() {
+        let host = PluginHost::default();
+
+        // Create the files expected by the config.
+        let temp_dir = TempDir::new("").unwrap();
+        let config_path = temp_dir.path().join("a.json");
+        fs::File::create(&config_path).unwrap();
+
+        let expected_cfg = TriggerInterpreterConfiguration {
+            config_reader: ConfigReaderConfiguration::File { file: config_path },
+            queue_reader: QueueReaderConfiguration::Directory {
+                path: temp_dir.path().into(),
+            },
+            queue_writer: QueueWriterConfiguration::Directory {
+                path: temp_dir.path().into(),
+            },
+        };
+
+        match expected_cfg.into_instance(Arc::from(host)).await {
+            Ok(_) => {}
+            Err(_) => {}
+        }
+    }
+
+    #[tokio::test]
+    async fn interpreter_system_config() {
+        let host = PluginHost::default();
+
+        let expected_cfg = TriggerInterpreterConfiguration {
+            config_reader: ConfigReaderConfiguration::File {
+                file: PathBuf::from("a.json"),
+            },
+            queue_reader: QueueReaderConfiguration::Directory {
+                path: PathBuf::from("bing/"),
+            },
+            queue_writer: QueueWriterConfiguration::Directory {
+                path: PathBuf::from("bong/"),
+            },
+        };
+
+        const DATA_RAW: &str = include_str!("test_data/interpreter_ok.json");
+
+        let deserialized: TriggerInterpreterConfiguration = serde_json::from_str(DATA_RAW).unwrap();
+        assert_eq!(deserialized, expected_cfg);
+
+        match deserialized.into_instance(Arc::from(host)).await {
+            Ok(_) => {}
+            Err(_) => {}
+        }
     }
 }

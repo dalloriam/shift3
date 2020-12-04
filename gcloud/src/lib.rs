@@ -1,9 +1,10 @@
 #![warn(missing_docs)] // Force documentation of all public interfaces.
 //! User-friendly GCloud wrappers.
 
-mod auth;
-mod https;
+/// Authentication utilities.
+pub mod auth;
+
+/// Pubsub client.
+pub mod pubsub;
 
 pub use auth::{AuthError, AuthProvider};
-pub mod datastore;
-pub mod pub_sub;

@@ -4,43 +4,46 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 
-use anyhow::{ensure, Error, Result};
-use gcloud::{pub_sub::PubSubClient, AuthProvider};
+use anyhow::{ensure, Result};
+
+use async_trait::async_trait;
+
+use gcloud::{auth, pubsub};
+
 use protocol::ActionManifest;
 
 use crate::interface::ActionManifestQueueWriter;
 
 pub struct PubSubActionManifestWriter {
-    client: PubSubClient,
-    topic_id: String,
+    topic: pubsub::Topic,
 }
 
 impl PubSubActionManifestWriter {
-    pub fn new(project_id: String, authenticator: AuthProvider, topic_id: String) -> Self {
-        Self {
-            client: PubSubClient::new(project_id, authenticator),
-            topic_id,
-        }
+    pub async fn new(
+        project_id: String,
+        authenticator: auth::AuthProvider,
+        topic_id: String,
+    ) -> Result<Self> {
+        let client = pubsub::Client::new(&project_id, authenticator).await?;
+        let topic = client.topic(&topic_id).await?;
+        Ok(Self { topic })
     }
 
-    pub fn from_credentials<P: AsRef<Path>>(
+    pub async fn from_credentials<P: AsRef<Path>>(
         project_id: String,
         credentials_file_path: P,
         topic: String,
     ) -> Result<Self> {
-        let authenticator = AuthProvider::from_json_file(credentials_file_path)?;
-        Ok(Self::new(project_id, authenticator, topic))
+        let authenticator = auth::AuthProvider::from_json_file(credentials_file_path)?;
+        Self::new(project_id, authenticator, topic).await
     }
 }
 
+#[async_trait]
 impl ActionManifestQueueWriter for PubSubActionManifestWriter {
-    fn push_action_manifest(&self, manifest: ActionManifest) -> Result<()> {
-        let result = self
-            .client
-            .publish(manifest, self.topic_id.as_str())
-            .map_err(|ds| Error::msg(format!("{:?}", ds)))?;
-
-        Ok(result)
+    async fn push_action_manifest(&self, manifest: ActionManifest) -> Result<()> {
+        self.topic.publish(manifest).await?;
+        Ok(())
     }
 }
 
@@ -64,8 +67,9 @@ impl FileActionManifestWriter {
     }
 }
 
+#[async_trait]
 impl ActionManifestQueueWriter for FileActionManifestWriter {
-    fn push_action_manifest(&self, manifest: ActionManifest) -> Result<()> {
+    async fn push_action_manifest(&self, manifest: ActionManifest) -> Result<()> {
         let value = self.counter.fetch_add(1, Ordering::SeqCst);
         let path = self.path.join(format!("action_manifest_{}.txt", value));
 

@@ -5,15 +5,21 @@ authors = ["William Dussault <dalloriam@gmail.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dev-dependencies]
+tempfile = "3"
 
 [dependencies]
-serde = {version = "1.0", features = ["derive"]}
-protocol = {path = "../protocol"}
-gcloud = {path = "../gcloud"}
-toolkit = {path = "../toolkit"}
-serde_json = "1.0"
-log = "0.4"
 anyhow = "1.0"
-handlebars = "3.3.0"
-regex = "1"
+tokio-async-std = "1.5"
+async-trait = "0.1"
+gcloud = {path = "../gcloud"}
 glob = "0.3.0"
+google-cloud = {git="https://github.com/dalloriam/google-cloud-rs", features = ["datastore", "pubsub"]}
+handlebars = "3.3.0"
+log = "0.4"
+protocol = {path = "../protocol"}
+regex = "1"
+serde = {version = "1.0", features = ["derive"]}
+serde_json = "1.0"
+tokio = {version = "0.2.18", features = ["full"]}
+toolkit = {path = "../toolkit"}

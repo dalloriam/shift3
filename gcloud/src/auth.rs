@@ -1,14 +1,10 @@
-use std::error::Error;
+use std::fs;
 use std::io;
 use std::path::Path;
 
-use hyper::Client;
+use google_cloud::authorize::ApplicationCredentials;
 
 use snafu::{ResultExt, Snafu};
-
-use yup_oauth2::{GetToken, ServiceAccountAccess, ServiceAccountKey, Token};
-
-use crate::https;
 
 /// Possible auth errors.
 #[derive(Debug, Snafu)]
@@ -18,24 +14,22 @@ pub enum AuthError {
     /// by the authentication provider.
     #[snafu(display("Failed to read service account key: {}", source))]
     FailedToReadServiceAccountKey { source: io::Error },
+
+    #[snafu(display("Failed to parse service account JSON"))]
+    FailedToParseJSON { source: serde_json::Error },
 }
 
 type Result<T> = std::result::Result<T, AuthError>;
 
 /// Provides google cloud authentication with a simple API.
-///
-/// It requires less boilerplate than the bare `yup_oauth2` provider, and it implements
-/// the `oauth::GetToken` trait, which means it can be used directly with Pubsub & Datastore clients.
 pub struct AuthProvider {
-    secret: ServiceAccountKey,
-    access_manager: ServiceAccountAccess<Client>,
+    credentials: ApplicationCredentials,
 }
 
 impl Clone for AuthProvider {
     fn clone(&self) -> Self {
         AuthProvider {
-            secret: self.secret.clone(),
-            access_manager: ServiceAccountAccess::new(self.secret.clone(), https::new_tls_client()),
+            credentials: self.credentials.clone(),
         }
     }
 }
@@ -47,32 +41,18 @@ impl AuthProvider {
     /// Returns an AuthError if the file cannot be read or if it doesn't contain
     /// valid JSON.
     pub fn from_json_file<P: AsRef<Path>>(path: P) -> Result<AuthProvider> {
-        // This is needed because `yup_oauth2` doesn't support `std::Path`...
-        let path_str = String::from(path.as_ref().to_string_lossy());
+        let file = fs::File::open(path.as_ref()).context(FailedToReadServiceAccountKey)?;
 
-        let secret = yup_oauth2::service_account_key_from_file(&path_str)
-            .context(FailedToReadServiceAccountKey)?;
+        let credentials: ApplicationCredentials =
+            serde_json::from_reader(file).context(FailedToParseJSON)?;
 
-        let access_manager = ServiceAccountAccess::new(secret.clone(), https::new_tls_client());
-
-        Ok(AuthProvider {
-            secret,
-            access_manager,
-        })
+        Ok(AuthProvider { credentials })
     }
 }
 
-impl GetToken for AuthProvider {
-    fn token<'b, I, T>(&mut self, scopes: I) -> std::result::Result<Token, Box<dyn Error>>
-    where
-        T: AsRef<str> + Ord + 'b,
-        I: IntoIterator<Item = &'b T>,
-    {
-        self.access_manager.token(scopes)
-    }
-
-    fn api_key(&mut self) -> Option<String> {
-        self.access_manager.api_key()
+impl From<AuthProvider> for ApplicationCredentials {
+    fn from(provider: AuthProvider) -> ApplicationCredentials {
+        provider.credentials
     }
 }
 

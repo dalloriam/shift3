@@ -3,71 +3,52 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{ensure, Error, Result};
-use gcloud::{pub_sub::PubSubClient, AuthProvider};
+use anyhow::{ensure, Result};
+
+use async_trait::async_trait;
+
+use gcloud::{auth, pubsub};
+
 use glob::glob;
+
 use protocol::Trigger;
+
+use serde::de::DeserializeOwned;
+
+use toolkit::message::{Error as MessageError, Message};
 
 use crate::interface::TriggerQueueReader;
 
 pub struct PubSubTriggerReader {
-    client: PubSubClient,
-    subscription_id: String,
-    project_id: String,
-    authenticator: AuthProvider,
+    subscription: pubsub::Subscription<Trigger, pubsub::formats::JSON>,
 }
 
 impl PubSubTriggerReader {
-    pub fn new(project_id: String, authenticator: AuthProvider, subscription_id: String) -> Self {
-        PubSubTriggerReader {
-            client: PubSubClient::new(project_id.clone(), authenticator.clone()),
-            subscription_id,
-            project_id,
-            authenticator,
-        }
+    pub async fn new(
+        project_id: String,
+        authenticator: auth::AuthProvider,
+        subscription_id: String,
+    ) -> Result<Self> {
+        let client = pubsub::Client::new(&project_id, authenticator).await?;
+        let subscription = client.subscription(&subscription_id).await?;
+        Ok(PubSubTriggerReader { subscription })
     }
 
-    pub fn from_credentials<P: AsRef<Path>>(
+    pub async fn from_credentials<P: AsRef<Path>>(
         project_id: String,
         credentials_file_path: P,
         subscription: String,
     ) -> Result<Self> {
-        let authenticator = AuthProvider::from_json_file(credentials_file_path)?;
-        Ok(Self::new(project_id, authenticator, subscription))
+        let authenticator = auth::AuthProvider::from_json_file(credentials_file_path)?;
+        Self::new(project_id, authenticator, subscription).await
     }
 }
 
-impl Clone for Box<dyn TriggerQueueReader + Send> {
-    fn clone(&self) -> Box<dyn TriggerQueueReader + Send> {
-        self.box_clone()
-    }
-}
-
+#[async_trait]
 impl TriggerQueueReader for PubSubTriggerReader {
-    fn box_clone(&self) -> Box<dyn TriggerQueueReader + Send> {
-        Box::new(PubSubTriggerReader {
-            client: PubSubClient::new(self.project_id.clone(), self.authenticator.clone()),
-            subscription_id: self.subscription_id.clone(),
-            project_id: self.project_id.clone(),
-            authenticator: self.authenticator.clone(),
-        })
-    }
-
-    fn pull_trigger(&self) -> Result<Vec<(String, Trigger)>> {
-        let result = self
-            .client
-            .pull(self.subscription_id.as_str(), 10) // TODO: Use config instead of hardcoded value
-            .map_err(|ds| Error::msg(format!("{:?}", ds)))?;
-
-        Ok(result)
-    }
-
-    fn acknowlege(&self, ack_ids: Vec<String>) -> Result<()> {
-        self.client
-            .acknowledge(ack_ids, self.subscription_id.as_str())
-            .map_err(|ds| Error::msg(format!("{:?}", ds)))?;
-
-        Ok(())
+    async fn pull_trigger(&self) -> Result<Option<Box<dyn Message<Trigger> + Send>>> {
+        let msg = self.subscription.pull().await?;
+        Ok(msg)
     }
 }
 
@@ -89,34 +70,82 @@ impl FileTriggerQueueReader {
     }
 }
 
+#[async_trait]
 impl TriggerQueueReader for FileTriggerQueueReader {
-    fn pull_trigger(&self) -> Result<Vec<(String, Trigger)>> {
-        let entries = glob(&format!(
+    async fn pull_trigger(&self) -> Result<Option<Box<dyn Message<Trigger> + Send>>> {
+        let entries: Vec<PathBuf> = glob(&format!(
             "{}/trigger_*.txt",
             self.path.to_string_lossy().as_ref()
-        ))
-        .expect("Failed to read glob pattern")
-        .filter_map(|x| x.ok());
+        ))?
+        .filter_map(|x| x.ok())
+        .collect();
 
-        let mut rules: Vec<(String, Trigger)> = Vec::new();
-        for path in entries {
-            let data = fs::read_to_string(path.clone())?;
-            // Adds the unnecessary acknowledge id and the trigger data to the vector
-            rules.push((String::from(""), serde_json::from_str(data.as_ref())?));
-            // Delete the file once it was read
-            fs::remove_file(path)?
+        match entries.first() {
+            Some(path) => Ok(Some(Box::from(FileQueueMessage { path: path.clone() }))),
+            None => Ok(None),
         }
-
-        Ok(rules)
     }
+}
 
-    fn box_clone(&self) -> Box<dyn TriggerQueueReader + Send> {
-        Box::new(FileTriggerQueueReader {
-            path: self.path.clone(),
-        })
-    }
+struct FileQueueMessage {
+    path: PathBuf,
+}
 
-    fn acknowlege(&self, _: Vec<String>) -> Result<()> {
+#[async_trait]
+impl<T> Message<T> for FileQueueMessage
+where
+    T: DeserializeOwned + 'static,
+{
+    async fn ack(&mut self) -> std::result::Result<(), MessageError> {
+        fs::remove_file(&self.path).map_err(|e| MessageError::AckError {
+            message: e.to_string(),
+        })?;
         Ok(())
+    }
+
+    fn data(&self) -> std::result::Result<T, MessageError> {
+        let file = fs::File::open(&self.path).map_err(|e| MessageError::DeserializeError {
+            message: e.to_string(),
+        })?;
+
+        let deserialized =
+            serde_json::from_reader(file).map_err(|e| MessageError::DeserializeError {
+                message: e.to_string(),
+            })?;
+
+        Ok(deserialized)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+
+    use protocol::Trigger;
+
+    use tempfile::tempdir;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn file_queue() {
+        // Setup a test directory.
+        let temp_dir = tempdir().unwrap();
+        let f = fs::File::create(temp_dir.path().join("trigger_1.txt")).unwrap();
+        let expected_trigger = Trigger {
+            rule: 3,
+            trigger_type: String::from("something"),
+            data: String::from("bing bong"),
+        };
+        serde_json::to_writer(f, &expected_trigger).unwrap();
+
+        // Test the queue
+        let q = FileTriggerQueueReader::new(temp_dir.path()).unwrap();
+        let mut message = q.pull_trigger().await.unwrap().unwrap();
+        let actual_trigger = message.data().unwrap();
+        message.ack().await.unwrap();
+        assert_eq!(actual_trigger, expected_trigger);
+
+        assert!(q.pull_trigger().await.unwrap().is_none())
     }
 }

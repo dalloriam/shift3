@@ -26,7 +26,8 @@ fn wait_until_ctrlc() -> Result<()> {
     Ok(())
 }
 
-fn main_loop(config_file_path: &PathBuf) -> Result<()> {
+#[tokio::main]
+async fn main_loop(config_file_path: &PathBuf) -> Result<()> {
     let cfg_format = polyglot::Format::try_from(
         config_file_path
             .extension()
@@ -36,7 +37,7 @@ fn main_loop(config_file_path: &PathBuf) -> Result<()> {
     )?;
 
     let cfg_handle = fs::File::open(config_file_path)?;
-    let node = Node::start(polyglot::from_reader(cfg_handle, cfg_format)?)?;
+    let node = Node::start(polyglot::from_reader(cfg_handle, cfg_format)?).await?;
 
     wait_until_ctrlc()?;
 

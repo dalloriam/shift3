@@ -19,8 +19,8 @@ pub struct ExecutorSystemConfiguration {
 }
 
 impl ExecutorSystemConfiguration {
-    pub fn into_instance(self, plugin_host: Arc<PluginHost>) -> Result<Service> {
-        let queue_reader = self.queue_reader.into_instance()?;
+    pub async fn into_instance(self, plugin_host: Arc<PluginHost>) -> Result<Service> {
+        let queue_reader = self.queue_reader.into_instance().await?;
         Ok(Box::from(ExecutorSystem::start(ExecutorSystemConfig {
             queue_reader,
             plugin_host,
@@ -39,19 +39,22 @@ pub enum QueueReaderConfiguration {
 }
 
 impl QueueReaderConfiguration {
-    fn into_instance(self) -> Result<Box<dyn ActionManifestQueueReader + Send>> {
-        match self {
+    async fn into_instance(self) -> Result<Box<dyn ActionManifestQueueReader + Send>> {
+        let b: Box<dyn ActionManifestQueueReader + Send> = match self {
             QueueReaderConfiguration::PubSub {
                 project_id,
                 credentials_file_path,
                 subscription,
-            } => Ok(Box::from(
+            } => Box::from(
                 PubsubActionManifestQueueReader::from_credentials(
                     project_id,
                     credentials_file_path,
                     subscription,
-                )?,
-            )),
-        }
+                )
+                .await?,
+            ),
+        };
+
+        Ok(b)
     }
 }

@@ -36,15 +36,15 @@ impl TriggerManager {
         queue_writer: BoxedQueueWriter,
         plugin_host: Arc<PluginHost>,
     ) -> Result<Self> {
-        let configs = cfg_loader.get_all_configurations()?;
-
         let mut manager = TriggerManager {
             cfg_loader,
             queue_writer,
             stop_rx,
 
-            configs,
-            last_config_update: time::Instant::now(),
+            configs: Vec::new(),
+            last_config_update: time::Instant::now()
+                .checked_sub(2 * CONFIG_UPDATE_FREQUENCY)
+                .unwrap(), // hack to mark configs as out of date. this is because we dont want to fetch configs in new() because its not async.
 
             executors: HashMap::new(),
             plugin_host,
@@ -65,7 +65,7 @@ impl TriggerManager {
         Ok(())
     }
 
-    fn execute_trigger(&mut self, cfg: &TriggerConfiguration) -> Result<()> {
+    async fn execute_trigger(&mut self, cfg: &TriggerConfiguration) -> Result<()> {
         log::debug!("checking trigger {}/{}", &cfg.trigger_type, cfg.id);
 
         let executor_maybe = self.executors.get_mut(&cfg.trigger_type);
@@ -77,38 +77,39 @@ impl TriggerManager {
 
         // unwrap is safe because of ensure()
         for trigger in executor_maybe.unwrap().pull_trigger(cfg)? {
-            self.queue_writer.push_trigger(trigger)?;
+            self.queue_writer.push_trigger(trigger).await?;
         }
         Ok(())
     }
 
-    fn check_all_triggers(&mut self) -> Result<()> {
+    async fn check_all_triggers(&mut self) -> Result<()> {
         log::debug!("begin checking all triggers");
 
         let now = time::Instant::now();
         if now.duration_since(self.last_config_update) > CONFIG_UPDATE_FREQUENCY {
             // Update trigger configs.
             log::info!("refreshing trigger configs");
-            self.configs = self.cfg_loader.get_all_configurations()?;
             self.last_config_update = now;
+            self.configs = self.cfg_loader.get_all_configurations().await?;
             log::info!("trigger config refresh complete");
         }
 
         let configs_copy = self.configs.clone();
         for config in configs_copy.into_iter() {
-            self.execute_trigger(&config)?;
+            self.execute_trigger(&config).await?;
         }
 
         Ok(())
     }
 
-    pub fn start(&mut self) {
+    #[tokio::main]
+    pub async fn start(&mut self) {
         loop {
             if self.stop_rx.try_recv().is_ok() {
                 break;
             }
 
-            if let Err(e) = self.check_all_triggers() {
+            if let Err(e) = self.check_all_triggers().await {
                 log::error!("{:?}", e);
             }
 
