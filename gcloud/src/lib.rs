@@ -8,4 +8,3 @@ pub mod auth;
 pub mod pubsub;
 
 pub use auth::{AuthError, AuthProvider};
-//pub mod pub_sub;
