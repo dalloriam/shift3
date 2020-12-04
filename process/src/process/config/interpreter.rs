@@ -157,7 +157,10 @@ impl QueueReaderConfiguration {
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
     use std::path::PathBuf;
+
+    use tempdir::TempDir;
 
     use super::*;
 
@@ -269,6 +272,31 @@ mod tests {
         QueueReaderConfiguration,
 
         (queue_read_gibberish, queue_gibberish),
+    }
+
+    #[tokio::test]
+    async fn interpreter_system_instanciation() {
+        let host = PluginHost::default();
+
+        // Create the files expected by the config.
+        let temp_dir = TempDir::new("").unwrap();
+        let config_path = temp_dir.path().join("a.json");
+        fs::File::create(&config_path).unwrap();
+
+        let expected_cfg = TriggerInterpreterConfiguration {
+            config_reader: ConfigReaderConfiguration::File { file: config_path },
+            queue_reader: QueueReaderConfiguration::Directory {
+                path: temp_dir.path().into(),
+            },
+            queue_writer: QueueWriterConfiguration::Directory {
+                path: temp_dir.path().into(),
+            },
+        };
+
+        match expected_cfg.into_instance(Arc::from(host)).await {
+            Ok(_) => {}
+            Err(_) => {}
+        }
     }
 
     #[tokio::test]
