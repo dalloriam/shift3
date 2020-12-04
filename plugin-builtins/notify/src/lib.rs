@@ -1,6 +1,6 @@
 use std::process::Command;
 
-use plugin_core::{ActionPlugin, Error, Plugin};
+use plugin_core::{ActionPlugin, Error};
 
 use protocol::ActionManifest;
 
@@ -47,10 +47,4 @@ impl ActionPlugin for NotifyPlugin {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn init_plugin() -> Box<Plugin> {
-    Box::new(Plugin::new(
-        vec![Box::new(NotifyPlugin::default())],
-        Vec::new(),
-    ))
-}
+plugin_core::export!((NotifyPlugin), ());

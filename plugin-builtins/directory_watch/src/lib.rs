@@ -3,7 +3,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-use plugin_core::{Error, Plugin, TriggerPlugin};
+use plugin_core::{Error, TriggerPlugin};
 
 use protocol::{Trigger, TriggerConfiguration};
 
@@ -87,10 +87,4 @@ impl TriggerPlugin for DirectoryWatcher {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn init_plugin() -> Box<Plugin> {
-    Box::new(Plugin::new(
-        Vec::new(),
-        vec![Box::new(DirectoryWatcher::default())],
-    ))
-}
+plugin_core::export!((), (DirectoryWatcher));
