@@ -2,4 +2,5 @@ ignore:
   - "trigger-system/src/iface_impl/**"
   - "gcloud/**.rs"
   - "plugin-builtins/**.rs"
+  - "plugin-core/**.rs"
   - "**/main.rs"
