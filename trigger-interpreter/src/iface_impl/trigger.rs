@@ -97,6 +97,9 @@ where
     T: DeserializeOwned + 'static,
 {
     async fn ack(&mut self) -> std::result::Result<(), MessageError> {
+        fs::remove_file(&self.path).map_err(|e| MessageError::AckError {
+            message: e.to_string(),
+        })?;
         Ok(())
     }
 
@@ -111,5 +114,38 @@ where
             })?;
 
         Ok(deserialized)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+
+    use protocol::Trigger;
+
+    use tempfile::tempdir;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn file_queue() {
+        // Setup a test directory.
+        let temp_dir = tempdir().unwrap();
+        let f = fs::File::create(temp_dir.path().join("trigger_1.txt")).unwrap();
+        let expected_trigger = Trigger {
+            rule: 3,
+            trigger_type: String::from("something"),
+            data: String::from("bing bong"),
+        };
+        serde_json::to_writer(f, &expected_trigger).unwrap();
+
+        // Test the queue
+        let q = FileTriggerQueueReader::new(temp_dir.path()).unwrap();
+        let mut message = q.pull_trigger().await.unwrap().unwrap();
+        let actual_trigger = message.data().unwrap();
+        message.ack().await.unwrap();
+        assert_eq!(actual_trigger, expected_trigger);
+
+        assert!(q.pull_trigger().await.unwrap().is_none())
     }
 }
