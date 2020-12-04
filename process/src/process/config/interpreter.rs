@@ -272,7 +272,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn trigger_system_config() {
+    async fn interpreter_system_config() {
         let host = PluginHost::default();
 
         let expected_cfg = TriggerInterpreterConfiguration {

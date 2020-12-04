@@ -198,4 +198,28 @@ mod tests {
 
         queue_gibberish,
     }
+
+    #[tokio::test]
+    async fn trigger_system_config() {
+        let host = PluginHost::default();
+
+        let expected_cfg = TriggerSystemConfiguration {
+            config_reader: ConfigReaderConfiguration::File {
+                file: PathBuf::from("a.json"),
+            },
+            queue_writer: QueueWriterConfiguration::Directory {
+                path: PathBuf::from("bong/"),
+            },
+        };
+
+        const DATA_RAW: &str = include_str!("test_data/trigger_ok.json");
+
+        let deserialized: TriggerSystemConfiguration = serde_json::from_str(DATA_RAW).unwrap();
+        assert_eq!(deserialized, expected_cfg);
+
+        match deserialized.into_instance(Arc::from(host)).await {
+            Ok(_) => {}
+            Err(_) => {}
+        }
+    }
 }
