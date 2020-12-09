@@ -2,7 +2,7 @@ use anyhow::Result;
 
 use async_trait::async_trait;
 
-use protocol::{ActionManifest, Rule, RuleID, Trigger};
+use protocol::{ActionManifest, Rule, Trigger};
 
 use toolkit::message::Message;
 
@@ -15,7 +15,7 @@ pub trait TriggerQueueReader {
 /// Trait describing an object capable of pulling a trigger from a queue.
 #[async_trait]
 pub trait ActionConfigReader {
-    async fn get_rule(&self, id: &RuleID) -> Result<Rule>;
+    async fn get_rule(&self, id: &str) -> Result<Rule>;
 }
 
 /// Trait describing an object capable of pushing an action manifest to a queue.

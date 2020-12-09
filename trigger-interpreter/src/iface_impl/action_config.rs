@@ -14,7 +14,7 @@ use gcloud::AuthProvider;
 
 use google_cloud::datastore;
 
-use protocol::{Rule, RuleID};
+use protocol::Rule;
 
 use toolkit::db::sled::{EntityStore, SledStore};
 
@@ -43,7 +43,7 @@ impl DatastoreActionConfigLoader {
 
 #[async_trait]
 impl ActionConfigReader for DatastoreActionConfigLoader {
-    async fn get_rule(&self, id: &RuleID) -> Result<Rule> {
+    async fn get_rule(&self, id: &str) -> Result<Rule> {
         let mut client_guard = self.client.lock().await;
         let client = &mut (*client_guard);
 
@@ -78,7 +78,7 @@ impl FileActionConfigReader {
 
 #[async_trait]
 impl ActionConfigReader for FileActionConfigReader {
-    async fn get_rule(&self, id: &RuleID) -> Result<Rule> {
+    async fn get_rule(&self, id: &str) -> Result<Rule> {
         let path = self.path.join(format!("action_config_{}.txt", id));
 
         let data = fs::read_to_string(path)?;
@@ -101,7 +101,7 @@ impl EmbeddedActionConfigReader {
 
 #[async_trait]
 impl ActionConfigReader for EmbeddedActionConfigReader {
-    async fn get_rule(&self, id: &RuleID) -> Result<Rule> {
+    async fn get_rule(&self, id: &str) -> Result<Rule> {
         let r = self.rules.get(id)?;
 
         match r {

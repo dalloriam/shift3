@@ -21,7 +21,7 @@ fn main() {
 
     let trigger_cfg = TriggerConfiguration {
         id: 1,
-        rule: r_id.clone(),
+        rule: r_id,
         trigger_type: "directory_watch".into(),
         data: "{\"directory\": \"/home/wduss/temp\"}".into(),
     };
