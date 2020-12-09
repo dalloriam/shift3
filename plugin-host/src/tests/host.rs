@@ -8,7 +8,11 @@ use crate::PluginHost;
 
 #[test]
 fn plugin_loading() {
+    #[cfg(target_os = "linux")]
     const PLUGIN_SO_DATA: &[u8] = include_bytes!("test_data/libdirectory_watch.so");
+
+    #[cfg(target_os = "macos")]
+    const PLUGIN_SO_DATA: &[u8] = include_bytes!("test_data/libdirectory_watch.dylib");
 
     // Write the plugin to a temp file.
     let temp_dir = tempdir().unwrap();
