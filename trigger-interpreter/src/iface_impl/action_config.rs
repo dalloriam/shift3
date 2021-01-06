@@ -48,7 +48,7 @@ impl ActionConfigReader for DatastoreActionConfigLoader {
         let client = &mut (*client_guard);
 
         // TODO: Not a fan of entering the kind as a string, it's error-prone...
-        let key = datastore::Key::new("Rule").id(id.clone());
+        let key = datastore::Key::new("Rule").id(id);
         let result: Option<Rule> = client.get(key).await?;
 
         match result {
