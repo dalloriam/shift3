@@ -139,8 +139,7 @@ mod tests {
     use std::path::PathBuf;
     use std::sync::Arc;
 
-    use super::{ConfigReaderConfiguration, QueueWriterConfiguration, ResourceManager};
-    use crate::Configuration;
+    use super::*;
 
     macro_rules! parse_ok {
         ($t: ident, $(($name:ident, $eq_to:expr),)*) => {
@@ -154,7 +153,7 @@ mod tests {
                     assert_eq!(deserialized, $eq_to);
 
                     // We don't care about whether it failed.
-                    match deserialized.into_instance(Arc::from(ResourceManager::new(&Configuration::default()).unwrap())).await {
+                    match deserialized.into_instance(Arc::from(ResourceManager::default())).await {
                         Ok(_) => {},
                         Err(_) => {}
                     }
@@ -226,5 +225,29 @@ mod tests {
         QueueWriterConfiguration,
 
         queue_gibberish,
+    }
+
+    #[tokio::test]
+    async fn trigger_system_config() {
+        let manager = ResourceManager::default();
+
+        let expected_cfg = TriggerSystemConfiguration {
+            config_reader: ConfigReaderConfiguration::File {
+                file: PathBuf::from("a.json"),
+            },
+            queue_writer: QueueWriterConfiguration::Directory {
+                path: PathBuf::from("bong/"),
+            },
+        };
+
+        const DATA_RAW: &str = include_str!("test_data/trigger_ok.json");
+
+        let deserialized: TriggerSystemConfiguration = serde_json::from_str(DATA_RAW).unwrap();
+        assert_eq!(deserialized, expected_cfg);
+
+        match deserialized.into_instance(Arc::from(manager)).await {
+            Ok(_) => {}
+            Err(_) => {}
+        }
     }
 }

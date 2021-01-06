@@ -67,7 +67,7 @@ impl MemoryQueue {
         }
     }
 
-    /// Create a memory queue with a persistence path.
+    /// Creates a persistent memory queue with the specified path.
     pub fn with_persist_path<P: Into<PathBuf>>(mut self, path: P) -> Self {
         self.persist_path = Some(path.into());
         self
@@ -79,7 +79,7 @@ impl MemoryQueue {
         })
     }
 
-    /// Publish a message to the queue.
+    /// Publishes a message to the memory queue.
     pub fn publish<T: Serialize>(&self, body: T) -> Result<()> {
         let message = MemoryMessage::new(body)?;
 

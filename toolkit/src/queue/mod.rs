@@ -1,5 +1,4 @@
-//! Various queue implementations.
-
+//! Queue-like datastructures.
 mod memory;
 
 pub use memory::MemoryQueue;
