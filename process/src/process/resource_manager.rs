@@ -28,7 +28,7 @@ impl ResourceManager {
     }
 
     pub fn get_plugin_host(&self) -> Arc<PluginHost> {
-        return self.plugin_host.clone();
+        self.plugin_host.clone()
     }
 
     pub fn get_memory_queue(&self, queue_name: &str) -> Result<Arc<MemoryQueue>> {
