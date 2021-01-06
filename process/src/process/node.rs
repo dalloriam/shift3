@@ -44,3 +44,19 @@ impl Node {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{Configuration, Node};
+
+    #[tokio::test]
+    async fn node_full_loop() {
+        let cfg = Configuration {
+            plugin_paths: Vec::new(),
+            systems: Vec::new(),
+        };
+
+        let n = Node::start(cfg).await.unwrap();
+        n.stop().unwrap();
+    }
+}

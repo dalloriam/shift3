@@ -186,9 +186,12 @@ impl QueueReaderConfiguration {
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
     use std::path::PathBuf;
 
-    use super::{ConfigReaderConfiguration, QueueReaderConfiguration, QueueWriterConfiguration};
+    use tempdir::TempDir;
+
+    use super::*;
 
     macro_rules! parse_ok {
         ($t: ident, $(($func_name:ident, $file_name:ident, $eq_to:expr),)*) => {
@@ -196,14 +199,14 @@ mod tests {
                 #[tokio::test]
                 async fn $func_name() {
                     const DATA_RAW: &str =
-                        include_str!(concat!("config/test_data/", stringify!($file_name), ".json"));
+                        include_str!(concat!("test_data/", stringify!($file_name), ".json"));
 
                     let deserialized: $t = serde_json::from_str(DATA_RAW).unwrap();
                     assert_eq!(deserialized, $eq_to);
 
                     // We don't care about whether it failed.
                     // TLDR; Increase coverage
-                    match deserialized.into_instance().await {
+                    match deserialized.into_instance(Arc::from(ResourceManager::default())).await {
                         Ok(_) => {},
                         Err(_) => {}
                     }
@@ -298,5 +301,57 @@ mod tests {
         QueueReaderConfiguration,
 
         (queue_read_gibberish, queue_gibberish),
+    }
+
+    #[tokio::test]
+    async fn interpreter_system_instanciation() {
+        let manager = ResourceManager::default();
+
+        // Create the files expected by the config.
+        let temp_dir = TempDir::new("").unwrap();
+        let config_path = temp_dir.path().join("a.json");
+        fs::File::create(&config_path).unwrap();
+
+        let expected_cfg = TriggerInterpreterConfiguration {
+            config_reader: ConfigReaderConfiguration::File { file: config_path },
+            queue_reader: QueueReaderConfiguration::Directory {
+                path: temp_dir.path().into(),
+            },
+            queue_writer: QueueWriterConfiguration::Directory {
+                path: temp_dir.path().into(),
+            },
+        };
+
+        match expected_cfg.into_instance(Arc::from(manager)).await {
+            Ok(_) => {}
+            Err(_) => {}
+        }
+    }
+
+    #[tokio::test]
+    async fn interpreter_system_config() {
+        let manager = ResourceManager::default();
+
+        let expected_cfg = TriggerInterpreterConfiguration {
+            config_reader: ConfigReaderConfiguration::File {
+                file: PathBuf::from("a.json"),
+            },
+            queue_reader: QueueReaderConfiguration::Directory {
+                path: PathBuf::from("bing/"),
+            },
+            queue_writer: QueueWriterConfiguration::Directory {
+                path: PathBuf::from("bong/"),
+            },
+        };
+
+        const DATA_RAW: &str = include_str!("test_data/interpreter_ok.json");
+
+        let deserialized: TriggerInterpreterConfiguration = serde_json::from_str(DATA_RAW).unwrap();
+        assert_eq!(deserialized, expected_cfg);
+
+        match deserialized.into_instance(Arc::from(manager)).await {
+            Ok(_) => {}
+            Err(_) => {}
+        }
     }
 }

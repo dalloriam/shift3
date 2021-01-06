@@ -12,6 +12,7 @@ use crate::Configuration;
 /// The resource manager is the struct that manages and holds
 /// objects that can be requested by the various systems as they boot, such as the
 /// plugin host, in-memory datastructures and queues, etc.
+#[derive(Default)]
 pub struct ResourceManager {
     plugin_host: Arc<PluginHost>,
 
