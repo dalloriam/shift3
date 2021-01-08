@@ -1,5 +1,8 @@
 mod config;
 mod node;
+mod resource_manager;
+
+use resource_manager::ResourceManager;
 
 pub use config::Configuration;
 pub use node::Node;

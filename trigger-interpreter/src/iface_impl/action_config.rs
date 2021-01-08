@@ -1,19 +1,22 @@
 use std::{
     fs,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 use async_std::sync::Mutex;
 
 use async_trait::async_trait;
 
-use anyhow::{ensure, Error, Result};
+use anyhow::{anyhow, ensure, Error, Result};
 
 use gcloud::AuthProvider;
 
 use google_cloud::datastore;
 
-use protocol::{Rule, RuleID};
+use protocol::Rule;
+
+use toolkit::db::sled::{EntityStore, SledStore};
 
 use crate::interface::ActionConfigReader;
 
@@ -40,7 +43,7 @@ impl DatastoreActionConfigLoader {
 
 #[async_trait]
 impl ActionConfigReader for DatastoreActionConfigLoader {
-    async fn get_rule(&self, id: RuleID) -> Result<Rule> {
+    async fn get_rule(&self, id: &str) -> Result<Rule> {
         let mut client_guard = self.client.lock().await;
         let client = &mut (*client_guard);
 
@@ -75,12 +78,35 @@ impl FileActionConfigReader {
 
 #[async_trait]
 impl ActionConfigReader for FileActionConfigReader {
-    async fn get_rule(&self, id: RuleID) -> Result<Rule> {
+    async fn get_rule(&self, id: &str) -> Result<Rule> {
         let path = self.path.join(format!("action_config_{}.txt", id));
 
         let data = fs::read_to_string(path)?;
         let rule = serde_json::from_str(data.as_ref())?;
 
         Ok(rule)
+    }
+}
+
+pub struct EmbeddedActionConfigReader {
+    rules: EntityStore<Rule>,
+}
+
+impl EmbeddedActionConfigReader {
+    pub fn new(db: Arc<SledStore>) -> Result<EmbeddedActionConfigReader> {
+        let rules: EntityStore<Rule> = db.entity("Rule")?;
+        Ok(Self { rules })
+    }
+}
+
+#[async_trait]
+impl ActionConfigReader for EmbeddedActionConfigReader {
+    async fn get_rule(&self, id: &str) -> Result<Rule> {
+        let r = self.rules.get(id)?;
+
+        match r {
+            Some(rule) => Ok(rule),
+            None => Err(anyhow!("Rule doesn't exist")),
+        }
     }
 }

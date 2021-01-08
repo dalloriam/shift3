@@ -3,6 +3,8 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::thread;
+use std::time;
 
 use anyhow::{anyhow, Result};
 
@@ -21,7 +23,9 @@ fn wait_until_ctrlc() -> Result<()> {
         r.store(false, Ordering::SeqCst);
     })?;
 
-    while running.load(Ordering::SeqCst) {}
+    while running.load(Ordering::SeqCst) {
+        thread::sleep(time::Duration::from_millis(500));
+    }
 
     Ok(())
 }

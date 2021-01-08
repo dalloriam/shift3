@@ -1,6 +1,7 @@
 use std::{
     fs,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 use anyhow::{ensure, Result};
@@ -16,6 +17,7 @@ use protocol::Trigger;
 use serde::de::DeserializeOwned;
 
 use toolkit::message::{Error as MessageError, Message};
+use toolkit::queue::MemoryQueue;
 
 use crate::interface::TriggerQueueReader;
 
@@ -117,6 +119,23 @@ where
     }
 }
 
+pub struct InMemoryTriggerQueueReader {
+    queue: Arc<MemoryQueue>,
+}
+
+impl InMemoryTriggerQueueReader {
+    pub fn new(queue: Arc<MemoryQueue>) -> Self {
+        Self { queue }
+    }
+}
+
+#[async_trait]
+impl TriggerQueueReader for InMemoryTriggerQueueReader {
+    async fn pull_trigger(&self) -> Result<Option<Box<dyn Message<Trigger> + Send>>> {
+        let msg: Option<Box<dyn Message<Trigger> + Send>> = self.queue.pull()?;
+        Ok(msg)
+    }
+}
 #[cfg(test)]
 mod tests {
     use std::fs;
@@ -133,7 +152,7 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let f = fs::File::create(temp_dir.path().join("trigger_1.txt")).unwrap();
         let expected_trigger = Trigger {
-            rule: 3,
+            rule: String::from("bing"),
             trigger_type: String::from("something"),
             data: String::from("bing bong"),
         };

@@ -1,7 +1,10 @@
 use std::{
     fs,
     path::{Path, PathBuf},
-    sync::atomic::{AtomicU64, Ordering},
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
 };
 
 use anyhow::{ensure, Result};
@@ -11,6 +14,8 @@ use async_trait::async_trait;
 use gcloud::{auth, pubsub};
 
 use protocol::ActionManifest;
+
+use toolkit::queue::MemoryQueue;
 
 use crate::interface::ActionManifestQueueWriter;
 
@@ -76,6 +81,24 @@ impl ActionManifestQueueWriter for FileActionManifestWriter {
         let file_handle = fs::File::create(path)?;
         serde_json::to_writer(file_handle, &manifest)?;
 
+        Ok(())
+    }
+}
+
+pub struct InMemoryActionManifestQueueWriter {
+    queue: Arc<MemoryQueue>,
+}
+
+impl InMemoryActionManifestQueueWriter {
+    pub fn new(queue: Arc<MemoryQueue>) -> Self {
+        Self { queue }
+    }
+}
+
+#[async_trait]
+impl ActionManifestQueueWriter for InMemoryActionManifestQueueWriter {
+    async fn push_action_manifest(&self, manifest: ActionManifest) -> Result<()> {
+        self.queue.publish(manifest)?;
         Ok(())
     }
 }

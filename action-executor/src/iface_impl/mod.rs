@@ -1,3 +1,3 @@
 mod trigger_reader;
 
-pub use trigger_reader::PubsubActionManifestQueueReader;
+pub use trigger_reader::{InMemoryActionManifestQueueReader, PubsubActionManifestQueueReader};

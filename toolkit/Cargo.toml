@@ -8,11 +8,18 @@ edition = "2018"
 
 [features]
 default = []
-webserver = ["actix-web"]
+full = ["sled-store"]
+
+sled-store = ["sled", "sha-1"]
+
+[dev-dependencies]
+serde = {version = "1", features = ["derive"]}
 
 [dependencies]
-actix-web = {version = "3", optional = true}
 async-trait = "0.1"
 log = "0.4"
 serde = "1"
+serde_json = "1"
+sled = {version = "0.34", optional = true}
+sha-1 = {version = "0.9", optional = true}
 snafu = "0.6"

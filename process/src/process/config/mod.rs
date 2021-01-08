@@ -7,13 +7,11 @@ mod trigger;
 
 use anyhow::Result;
 
-use plugin_host::PluginHost;
-
 use serde::{Deserialize, Serialize};
 
-use crate::Service;
+use crate::{ResourceManager, Service};
 
-#[derive(Deserialize, Serialize)]
+#[derive(Default, Deserialize, Serialize)]
 pub struct Configuration {
     pub plugin_paths: Vec<PathBuf>,
     pub systems: Vec<SystemConfiguration>,
@@ -28,11 +26,11 @@ pub enum SystemConfiguration {
 }
 
 impl SystemConfiguration {
-    pub async fn into_instance(self, host: Arc<PluginHost>) -> Result<Service> {
+    pub async fn into_instance(self, manager: Arc<ResourceManager>) -> Result<Service> {
         match self {
-            SystemConfiguration::Trigger(cfg) => cfg.into_instance(host).await,
-            SystemConfiguration::Interpreter(cfg) => cfg.into_instance(host).await,
-            SystemConfiguration::Executor(cfg) => cfg.into_instance(host).await,
+            SystemConfiguration::Trigger(cfg) => cfg.into_instance(manager).await,
+            SystemConfiguration::Interpreter(cfg) => cfg.into_instance(manager).await,
+            SystemConfiguration::Executor(cfg) => cfg.into_instance(manager).await,
         }
     }
 }
@@ -42,12 +40,11 @@ mod tests {
     use std::path::PathBuf;
     use std::sync::Arc;
 
-    use plugin_host::PluginHost;
-
     use super::trigger::{
         ConfigReaderConfiguration, QueueWriterConfiguration, TriggerSystemConfiguration,
     };
-    use super::SystemConfiguration;
+    use super::{ResourceManager, SystemConfiguration};
+    use crate::Configuration;
 
     #[tokio::test]
     async fn test_into_instance() {
@@ -60,8 +57,10 @@ mod tests {
             },
         });
 
-        cfg.into_instance(Arc::new(PluginHost::default()))
-            .await
-            .unwrap();
+        cfg.into_instance(Arc::new(
+            ResourceManager::new(&Configuration::default()).unwrap(),
+        ))
+        .await
+        .unwrap();
     }
 }

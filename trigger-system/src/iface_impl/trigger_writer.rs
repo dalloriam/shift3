@@ -1,6 +1,9 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    Arc,
+};
 
 use async_std::sync::Mutex;
 
@@ -11,6 +14,8 @@ use async_trait::async_trait;
 use gcloud::AuthProvider;
 
 use google_cloud::pubsub;
+
+use toolkit::queue::MemoryQueue;
 
 use crate::interface::{Trigger, TriggerQueueWriter};
 
@@ -84,6 +89,24 @@ impl TriggerQueueWriter for DirectoryTriggerQueueWriter {
 
         let file_handle = fs::File::create(path)?;
         serde_json::to_writer(file_handle, &trigger)?;
+        Ok(())
+    }
+}
+
+pub struct InMemoryTriggerQueueWriter {
+    queue: Arc<MemoryQueue>,
+}
+
+impl InMemoryTriggerQueueWriter {
+    pub fn new(queue: Arc<MemoryQueue>) -> Self {
+        InMemoryTriggerQueueWriter { queue }
+    }
+}
+
+#[async_trait]
+impl TriggerQueueWriter for InMemoryTriggerQueueWriter {
+    async fn push_trigger(&self, trigger: Trigger) -> Result<()> {
+        self.queue.publish(trigger)?;
         Ok(())
     }
 }

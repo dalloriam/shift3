@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::sync::Arc;
 
 use anyhow::Result;
 
@@ -8,7 +9,7 @@ use gcloud::{auth, pubsub};
 
 use protocol::ActionManifest;
 
-use toolkit::message::Message;
+use toolkit::{message::Message, queue::MemoryQueue};
 
 use crate::interfaces::ActionManifestQueueReader;
 
@@ -44,6 +45,26 @@ impl ActionManifestQueueReader for PubsubActionManifestQueueReader {
         &self,
     ) -> Result<Option<Box<dyn Message<ActionManifest> + Send>>> {
         let msg = self.subscription.pull().await?;
+        Ok(msg)
+    }
+}
+
+pub struct InMemoryActionManifestQueueReader {
+    queue: Arc<MemoryQueue>,
+}
+
+impl InMemoryActionManifestQueueReader {
+    pub fn new(queue: Arc<MemoryQueue>) -> Self {
+        Self { queue }
+    }
+}
+
+#[async_trait]
+impl ActionManifestQueueReader for InMemoryActionManifestQueueReader {
+    async fn pull_action_manifest(
+        &self,
+    ) -> Result<Option<Box<dyn Message<ActionManifest> + Send>>> {
+        let msg: Option<Box<dyn Message<ActionManifest> + Send>> = self.queue.pull()?;
         Ok(msg)
     }
 }

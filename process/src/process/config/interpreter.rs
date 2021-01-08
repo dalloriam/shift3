@@ -3,16 +3,15 @@ use std::sync::Arc;
 
 use anyhow::Result;
 
-use plugin_host::PluginHost;
-
 use serde::{Deserialize, Serialize};
 
-use crate::Service;
+use crate::{ResourceManager, Service};
 
 use trigger_interpreter::{
     iface_impl::{
-        DatastoreActionConfigLoader, FileActionConfigReader, FileActionManifestWriter,
-        FileTriggerQueueReader, PubSubActionManifestWriter, PubSubTriggerReader,
+        DatastoreActionConfigLoader, EmbeddedActionConfigReader, FileActionConfigReader,
+        FileActionManifestWriter, FileTriggerQueueReader, InMemoryActionManifestQueueWriter,
+        InMemoryTriggerQueueReader, PubSubActionManifestWriter, PubSubTriggerReader,
     },
     ActionConfigReader, ActionManifestQueueWriter, TriggerInterpreter, TriggerQueueReader,
 };
@@ -27,10 +26,19 @@ pub struct TriggerInterpreterConfiguration {
 
 impl TriggerInterpreterConfiguration {
     /// Converts the trigger interpreter configuration to a usable service instance.
-    pub async fn into_instance(self, _plugin_host: Arc<PluginHost>) -> Result<Service> {
-        let cfg_reader = self.config_reader.into_instance().await?;
-        let queue_writer = self.queue_writer.into_instance().await?;
-        let queue_reader = self.queue_reader.into_instance().await?;
+    pub async fn into_instance(self, resource_manager: Arc<ResourceManager>) -> Result<Service> {
+        let cfg_reader = self
+            .config_reader
+            .into_instance(resource_manager.clone())
+            .await?;
+        let queue_writer = self
+            .queue_writer
+            .into_instance(resource_manager.clone())
+            .await?;
+        let queue_reader = self
+            .queue_reader
+            .into_instance(resource_manager.clone())
+            .await?;
 
         Ok(Box::from(TriggerInterpreter::start(
             queue_reader,
@@ -53,11 +61,17 @@ pub enum ConfigReaderConfiguration {
         project_id: String,
         credentials_file_path: String,
     },
+    Embedded {
+        directory: PathBuf,
+    },
 }
 
 impl ConfigReaderConfiguration {
     /// Returns a usable action config reader from the configuration struct.
-    pub async fn into_instance(self) -> Result<Box<dyn ActionConfigReader + Send>> {
+    pub async fn into_instance(
+        self,
+        resource_manager: Arc<ResourceManager>,
+    ) -> Result<Box<dyn ActionConfigReader + Send>> {
         let b: Box<dyn ActionConfigReader + Send> = match self {
             ConfigReaderConfiguration::File { file } => {
                 Box::from(FileActionConfigReader::new(file)?)
@@ -68,6 +82,9 @@ impl ConfigReaderConfiguration {
             } => Box::from(
                 DatastoreActionConfigLoader::from_credentials(project_id, credentials_file_path)
                     .await?,
+            ),
+            ConfigReaderConfiguration::Embedded { directory } => Box::from(
+                EmbeddedActionConfigReader::new(resource_manager.get_embedded_store(&directory)?)?,
             ),
         };
 
@@ -89,10 +106,16 @@ pub enum QueueWriterConfiguration {
         credentials_file_path: String,
         topic: String,
     },
+    InMemory {
+        topic: String,
+    },
 }
 
 impl QueueWriterConfiguration {
-    pub async fn into_instance(self) -> Result<Box<dyn ActionManifestQueueWriter + Send>> {
+    pub async fn into_instance(
+        self,
+        resource_manager: Arc<ResourceManager>,
+    ) -> Result<Box<dyn ActionManifestQueueWriter + Send>> {
         let b: Box<dyn ActionManifestQueueWriter + Send> = match self {
             QueueWriterConfiguration::Directory { path } => {
                 Box::from(FileActionManifestWriter::new(path)?)
@@ -108,6 +131,9 @@ impl QueueWriterConfiguration {
                     topic,
                 )
                 .await?,
+            ),
+            QueueWriterConfiguration::InMemory { topic } => Box::from(
+                InMemoryActionManifestQueueWriter::new(resource_manager.get_memory_queue(&topic)?),
             ),
         };
 
@@ -129,10 +155,16 @@ pub enum QueueReaderConfiguration {
         credentials_file_path: String,
         subscription: String,
     },
+    InMemory {
+        topic: String,
+    },
 }
 
 impl QueueReaderConfiguration {
-    pub async fn into_instance(self) -> Result<Box<dyn TriggerQueueReader + Send>> {
+    pub async fn into_instance(
+        self,
+        resource_manager: Arc<ResourceManager>,
+    ) -> Result<Box<dyn TriggerQueueReader + Send>> {
         let b: Box<dyn TriggerQueueReader + Send> = match self {
             QueueReaderConfiguration::Directory { path } => {
                 Box::from(FileTriggerQueueReader::new(path)?)
@@ -149,6 +181,9 @@ impl QueueReaderConfiguration {
                 )
                 .await?,
             ),
+            QueueReaderConfiguration::InMemory { topic } => Box::from(
+                InMemoryTriggerQueueReader::new(resource_manager.get_memory_queue(&topic)?),
+            ),
         };
 
         Ok(b)
@@ -159,6 +194,7 @@ impl QueueReaderConfiguration {
 mod tests {
     use std::fs;
     use std::path::PathBuf;
+    use std::sync::Arc;
 
     use tempdir::TempDir;
 
@@ -177,7 +213,7 @@ mod tests {
 
                     // We don't care about whether it failed.
                     // TLDR; Increase coverage
-                    match deserialized.into_instance().await {
+                    match deserialized.into_instance(Arc::from(ResourceManager::default())).await {
                         Ok(_) => {},
                         Err(_) => {}
                     }
@@ -276,7 +312,7 @@ mod tests {
 
     #[tokio::test]
     async fn interpreter_system_instanciation() {
-        let host = PluginHost::default();
+        let manager = ResourceManager::default();
 
         // Create the files expected by the config.
         let temp_dir = TempDir::new("").unwrap();
@@ -293,7 +329,7 @@ mod tests {
             },
         };
 
-        match expected_cfg.into_instance(Arc::from(host)).await {
+        match expected_cfg.into_instance(Arc::from(manager)).await {
             Ok(_) => {}
             Err(_) => {}
         }
@@ -301,7 +337,7 @@ mod tests {
 
     #[tokio::test]
     async fn interpreter_system_config() {
-        let host = PluginHost::default();
+        let manager = ResourceManager::default();
 
         let expected_cfg = TriggerInterpreterConfiguration {
             config_reader: ConfigReaderConfiguration::File {
@@ -320,7 +356,7 @@ mod tests {
         let deserialized: TriggerInterpreterConfiguration = serde_json::from_str(DATA_RAW).unwrap();
         assert_eq!(deserialized, expected_cfg);
 
-        match deserialized.into_instance(Arc::from(host)).await {
+        match deserialized.into_instance(Arc::from(manager)).await {
             Ok(_) => {}
             Err(_) => {}
         }
