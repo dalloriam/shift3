@@ -1,4 +1,6 @@
 use std::sync::mpsc;
+use std::thread;
+use std::time::Duration;
 
 use anyhow::Result;
 
@@ -73,6 +75,8 @@ impl TriggerManager {
             if let Err(e) = self.pull_trigger().await {
                 log::error!("{:?}", e);
             }
+
+            thread::sleep(Duration::from_millis(100));
 
             if self.stop_rx.try_recv().is_ok() {
                 break;

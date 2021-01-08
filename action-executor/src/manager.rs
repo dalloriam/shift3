@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 use std::sync::{mpsc, Arc};
+use std::thread;
+use std::time::Duration;
 
 use anyhow::Result;
 
@@ -72,6 +74,8 @@ impl ExecutorManager {
             if let Err(e) = self.pull_cycle().await {
                 log::error!("{:?}", e);
             }
+
+            thread::sleep(Duration::from_millis(100));
 
             if self.stop_rx.try_recv().is_ok() {
                 log::debug!("executor stopping");
