@@ -40,7 +40,7 @@ fn in_memory_full_loop() {
         plugin_host: Arc::new(PluginHost::default()),
     };
     let sys = ExecutorSystem::start(cfg);
-    thread::sleep(time::Duration::from_millis(100)); // Give the system a chance to boot.
+    thread::sleep(time::Duration::from_millis(1000)); // Give the system a chance to boot & consume.
 
     sys.terminate().unwrap();
 

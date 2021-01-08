@@ -26,7 +26,7 @@ clap = "3.0.0-beta.2"
 ctrlc = "3.1"
 env_logger = "0.8"
 gcloud = {path = "../gcloud"}
-log = "0.4"
+log = "=0.4.11"
 plugin-host = {path = "../plugin-host"}
 polyglot = {version = "0.2.1", features = ["json_fmt", "toml_fmt", "yaml_fmt"]}
 serde = {version = "1.0", features = ["derive"]}
