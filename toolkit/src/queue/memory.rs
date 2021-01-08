@@ -51,7 +51,7 @@ where
     }
 }
 
-/// In-Memory message queue.
+/// An in-memory queue for sending messages between components of the generic process.
 pub struct MemoryQueue {
     persist_path: Option<PathBuf>,
 
@@ -59,7 +59,7 @@ pub struct MemoryQueue {
 }
 
 impl MemoryQueue {
-    /// Creates a new memory queue.
+    /// Create a basic in-memory queue.
     pub fn new() -> MemoryQueue {
         MemoryQueue {
             persist_path: None,
@@ -91,7 +91,7 @@ impl MemoryQueue {
         Ok(())
     }
 
-    /// Pulls a message from the memory queue.
+    /// Pulls a single message from the queue.
     pub fn pull<T: DeserializeOwned + Send + 'static>(
         &self,
     ) -> Result<Option<Box<dyn Message<T> + Send>>> {

@@ -22,7 +22,7 @@ impl Default for Dummy {
 
 #[async_trait]
 impl ActionConfigReader for Dummy {
-    async fn get_rule(&self, _id: RuleID) -> Result<Rule> {
+    async fn get_rule(&self, _id: &str) -> Result<Rule> {
         Ok(Rule {
             trigger_config_id: 1,
             action_config: String::from(""),
@@ -57,8 +57,8 @@ impl InMemoryActionConfigReader {
 
 #[async_trait]
 impl ActionConfigReader for InMemoryActionConfigReader {
-    async fn get_rule(&self, id: RuleID) -> Result<Rule> {
-        if let Some(rule) = self.configs.get(&id) {
+    async fn get_rule(&self, id: &str) -> Result<Rule> {
+        if let Some(rule) = self.configs.get(id) {
             return Ok(rule.clone());
         }
 

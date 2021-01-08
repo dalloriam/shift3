@@ -152,7 +152,7 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let f = fs::File::create(temp_dir.path().join("trigger_1.txt")).unwrap();
         let expected_trigger = Trigger {
-            rule: 3,
+            rule: String::from("bing"),
             trigger_type: String::from("something"),
             data: String::from("bing bong"),
         };

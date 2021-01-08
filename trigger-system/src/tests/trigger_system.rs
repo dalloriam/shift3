@@ -34,7 +34,7 @@ fn in_memory_full_loop() {
     let watched_dir_path = watched_directory.path().to_string_lossy().to_string();
     let trigger_config = TriggerConfiguration {
         id: 42,
-        rule: 42,
+        rule: "42".into(),
         trigger_type: String::from("directory_watch"),
         data: serde_json::to_string(&json!({ "directory": watched_dir_path })).unwrap(),
     };
@@ -70,7 +70,7 @@ fn in_memory_full_loop() {
     assert_eq!(
         queue_ref.queue.first().unwrap(),
         &Trigger {
-            rule: 42,
+            rule: "42".into(),
             trigger_type: String::from("directory_watch"),
             data: serde_json::to_string(&json!({
                 "file_name": "some_file.txt"

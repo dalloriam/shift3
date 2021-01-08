@@ -31,7 +31,7 @@ fn in_memory_full_loop() {
         (*guard).incoming_queue.push(ActionManifest {
             data: i.to_string(),
             action_type: String::from("bing"),
-            rule: 1,
+            rule: "1".into(),
         });
     }
 

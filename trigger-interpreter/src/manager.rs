@@ -34,7 +34,7 @@ impl TriggerManager {
 
         log::debug!("fetching the rule ({}) by its id", trigger.rule);
         // Get action configuration associated with the trigger's rule.
-        let rule = self.cfg_reader.get_rule(trigger.rule).await?;
+        let rule = self.cfg_reader.get_rule(&trigger.rule).await?;
         log::debug!("rule fetched {:?}", rule);
 
         log::debug!("rendering the template from the action configuration");
