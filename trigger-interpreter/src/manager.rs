@@ -76,6 +76,7 @@ impl TriggerManager {
                 log::error!("{:?}", e);
             }
 
+            // TODO: Make this configurable.
             thread::sleep(Duration::from_millis(100));
 
             if self.stop_rx.try_recv().is_ok() {
