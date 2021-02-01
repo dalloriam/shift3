@@ -30,7 +30,7 @@ log = "=0.4.14"
 plugin-host = {path = "../plugin-host"}
 polyglot = {version = "0.2.1", features = ["json_fmt", "toml_fmt", "yaml_fmt"]}
 serde = {version = "1.0", features = ["derive"]}
-tokio = {version = "0.2.18", features = ["full"]}
+tokio = {version = "1.1.1", features = ["full"]}
 toolkit = {path = "../toolkit", features = ["full"]}
 trigger-system = {path = "../trigger-system"}
 trigger-interpreter = {path = "../trigger-interpreter"}
