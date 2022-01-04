@@ -16,5 +16,5 @@ google-cloud = {git = "https://github.com/dalloriam/google-cloud-rs", features =
 log = "=0.4.14"
 serde = "^1.0"
 serde_json = "^1.0"
-snafu = "0.6"
+snafu = "0.7"
 toolkit = {path = "../toolkit"}
