@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread;
@@ -31,7 +31,7 @@ fn wait_until_ctrlc() -> Result<()> {
 }
 
 #[tokio::main]
-async fn main_loop(config_file_path: &PathBuf) -> Result<()> {
+async fn main_loop(config_file_path: &Path) -> Result<()> {
     let cfg_format = polyglot::Format::try_from(
         config_file_path
             .extension()

@@ -12,9 +12,9 @@ use crate::message::{Error as MsgError, Message};
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    MessageDeserializeError { source: serde_json::Error },
-    MessageSerializeError { source: serde_json::Error },
-    MutexPoisoningError { message: String },
+    MessageDeserialize { source: serde_json::Error },
+    MessageSerialize { source: serde_json::Error },
+    MutexPoisoning { message: String },
 }
 
 type Result<T> = std::result::Result<T, Error>;
@@ -25,12 +25,12 @@ struct MemoryMessage {
 
 impl MemoryMessage {
     fn new<T: Serialize>(payload: T) -> Result<MemoryMessage> {
-        let data = serde_json::to_vec(&payload).context(MessageSerializeError)?;
+        let data = serde_json::to_vec(&payload).context(MessageSerializeSnafu)?;
         Ok(MemoryMessage { data })
     }
 
     fn decode<T: DeserializeOwned>(&self) -> Result<T> {
-        serde_json::from_slice(&self.data).context(MessageDeserializeError)
+        serde_json::from_slice(&self.data).context(MessageDeserializeSnafu)
     }
 }
 
@@ -74,7 +74,7 @@ impl MemoryQueue {
     }
 
     fn lock(&self) -> Result<MutexGuard<VecDeque<MemoryMessage>>> {
-        self.queue.lock().map_err(|e| Error::MutexPoisoningError {
+        self.queue.lock().map_err(|e| Error::MutexPoisoning {
             message: e.to_string(),
         })
     }

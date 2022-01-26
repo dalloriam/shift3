@@ -13,4 +13,4 @@ tempfile = "3"
 libloading = "0.6"
 log = "=0.4.14"
 plugin-core = {path = "../plugin-core"}
-snafu = "0.6"
+snafu = "0.7"

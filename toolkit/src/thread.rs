@@ -10,8 +10,8 @@ use snafu::{ensure, Snafu};
 #[allow(missing_docs)] // Otherwise, cargo will ask to document each field of each error, which is a bit overkill.
 pub enum Error {
     AlreadyStopped,
-    ShutdownRequestError,
-    JoinError,
+    ShutdownRequest,
+    Join,
 }
 
 type Result<T> = std::result::Result<T, Error>;
@@ -34,7 +34,7 @@ where
     /// Joins the holder and returns the return value of the thread.
     pub fn join(self) -> Result<T> {
         let join_result = self.handle.join();
-        ensure!(join_result.is_ok(), JoinError);
+        ensure!(join_result.is_ok(), JoinSnafu);
 
         Ok(join_result.unwrap())
     }
@@ -71,7 +71,7 @@ where
     pub fn stop(self) -> Result<JoinHolder<T>> {
         let handle = self.join_handle;
 
-        ensure!(self.tx_stop.send(()).is_ok(), ShutdownRequestError);
+        ensure!(self.tx_stop.send(()).is_ok(), ShutdownRequestSnafu);
 
         Ok(JoinHolder::new(handle))
     }
@@ -136,7 +136,7 @@ mod tests {
         let handle = StoppableThread::spawn(do_something_and_stop);
         thread::sleep(time::Duration::from_millis(100));
         if let Err(e) = handle.stop() {
-            assert_eq!(e, Error::ShutdownRequestError);
+            assert_eq!(e, Error::ShutdownRequest);
         } else {
             panic!("error expected")
         }
