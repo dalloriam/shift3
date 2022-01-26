@@ -14,13 +14,13 @@ use snafu::{ResultExt, Snafu};
 #[allow(missing_docs)]
 #[derive(Debug, Snafu)]
 pub enum Error {
-    FailedToDeserializeItem { source: serde_json::Error },
-    FailedToFlush { source: sled::Error },
-    FailedToInsertItem { source: sled::Error },
-    FailedToOpenTree { source: sled::Error },
-    FailedToOpenDatabase { source: sled::Error },
-    FailedToReadItem { source: sled::Error },
-    FailedToSerializeItem { source: serde_json::Error },
+    DeserializeItem { source: serde_json::Error },
+    Flush { source: sled::Error },
+    InsertItem { source: sled::Error },
+    OpenTree { source: sled::Error },
+    OpenDatabase { source: sled::Error },
+    ReadItem { source: sled::Error },
+    SerializeItem { source: serde_json::Error },
 }
 
 type Result<T> = std::result::Result<T, Error>;
@@ -34,7 +34,7 @@ pub struct SledStore {
 impl SledStore {
     /// Create or open a sled database at the provided directory.
     pub fn new<P: AsRef<Path>>(persist_path: P) -> Result<Self> {
-        let db = sled::open(persist_path.as_ref()).context(FailedToOpenDatabase)?;
+        let db = sled::open(persist_path.as_ref()).context(OpenDatabaseSnafu)?;
         Ok(SledStore { db })
     }
 
@@ -63,7 +63,7 @@ where
 {
     /// Fetch a subtree from the database and return a new handle to it.
     pub fn new(db: &sled::Db, kind: &str) -> Result<EntityStore<T>> {
-        let tree = db.open_tree(kind).context(FailedToOpenTree)?;
+        let tree = db.open_tree(kind).context(OpenTreeSnafu)?;
 
         Ok(EntityStore {
             tree,
@@ -73,16 +73,16 @@ where
 
     /// Flush the store to disk.
     pub fn flush(&self) -> Result<()> {
-        self.tree.flush().context(FailedToFlush)?;
+        self.tree.flush().context(FlushSnafu)?;
         Ok(())
     }
 
     /// Get an entity from this store by its ID.
     pub fn get(&self, id: &str) -> Result<Option<T>> {
-        match self.tree.get(id).context(FailedToReadItem)? {
+        match self.tree.get(id).context(ReadItemSnafu)? {
             Some(item_ivec) => {
                 let item =
-                    serde_json::from_slice(item_ivec.as_ref()).context(FailedToDeserializeItem)?;
+                    serde_json::from_slice(item_ivec.as_ref()).context(DeserializeItemSnafu)?;
                 Ok(Some(item))
             }
             None => Ok(None),
@@ -92,7 +92,7 @@ where
     /// Insert a new entity to this store.
     pub fn insert(&self, entity: &T) -> Result<String> {
         // Serialize the entity.
-        let serialized_bytes = serde_json::to_vec(entity).context(FailedToSerializeItem)?;
+        let serialized_bytes = serde_json::to_vec(entity).context(SerializeItemSnafu)?;
 
         // Hash the serialization to get an ID.
         //  (This is the worst way to get an ID - impossible to update)
@@ -105,7 +105,7 @@ where
 
         self.tree
             .insert(id_str.clone(), serialized_bytes)
-            .context(FailedToInsertItem)?;
+            .context(InsertItemSnafu)?;
 
         Ok(id_str)
     }
@@ -116,8 +116,8 @@ where
 
         let mut results: Vec<T> = Vec::new();
         for tuple_maybe in self.tree.iter() {
-            let (_key_ivec, val_ivec) = tuple_maybe.context(FailedToReadItem)?;
-            let val = serde_json::from_slice(val_ivec.as_ref()).context(FailedToDeserializeItem)?;
+            let (_key_ivec, val_ivec) = tuple_maybe.context(ReadItemSnafu)?;
+            let val = serde_json::from_slice(val_ivec.as_ref()).context(DeserializeItemSnafu)?;
             results.push(val);
         }
 
