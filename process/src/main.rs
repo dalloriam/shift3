@@ -8,7 +8,7 @@ use std::time;
 
 use anyhow::{anyhow, Result};
 
-use clap::Clap;
+use clap::Parser;
 
 use process::Node;
 
@@ -48,7 +48,7 @@ async fn main_loop(config_file_path: &PathBuf) -> Result<()> {
     node.stop()
 }
 
-#[derive(Clap, Debug)]
+#[derive(Parser, Debug)]
 #[clap(
     version = "0.1.0",
     author = "William Dussault",
