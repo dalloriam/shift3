@@ -13,10 +13,10 @@ pub enum AuthError {
     /// Error returned when the service account key file couldn't be read
     /// by the authentication provider.
     #[snafu(display("Failed to read service account key: {}", source))]
-    FailedToReadServiceAccountKey { source: io::Error },
+    ReadServiceAccountKey { source: io::Error },
 
     #[snafu(display("Failed to parse service account JSON"))]
-    FailedToParseJSON { source: serde_json::Error },
+    ParseJSON { source: serde_json::Error },
 }
 
 type Result<T> = std::result::Result<T, AuthError>;
@@ -41,10 +41,10 @@ impl AuthProvider {
     /// Returns an AuthError if the file cannot be read or if it doesn't contain
     /// valid JSON.
     pub fn from_json_file<P: AsRef<Path>>(path: P) -> Result<AuthProvider> {
-        let file = fs::File::open(path.as_ref()).context(FailedToReadServiceAccountKey)?;
+        let file = fs::File::open(path.as_ref()).context(ReadServiceAccountKeySnafu)?;
 
         let credentials: ApplicationCredentials =
-            serde_json::from_reader(file).context(FailedToParseJSON)?;
+            serde_json::from_reader(file).context(ParseJSONSnafu)?;
 
         Ok(AuthProvider { credentials })
     }

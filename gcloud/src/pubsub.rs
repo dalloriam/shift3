@@ -18,27 +18,27 @@ use crate::auth::AuthProvider;
 #[derive(Debug, Snafu)]
 pub enum Error {
     // Message errors.
-    AckError {
+    Ack {
         source: pubsub::Error,
     },
-    MessageDeserializeError {
+    MessageDeserialize {
         source: serde_json::Error,
     },
-    MessageSerializeError {
+    MessageSerialize {
         source: serde_json::Error,
     },
-    MessagePublishError {
+    MessagePublish {
         source: pubsub::Error,
     },
 
     // Client Errors
-    FailedToInitializeClient {
+    InitializeClient {
         source: pubsub::Error,
     },
-    FailedToGetSubscription {
+    GetSubscription {
         source: pubsub::Error,
     },
-    FailedToGetTopic {
+    GetTopic {
         source: pubsub::Error,
     },
     #[snafu(display("subscription '{}' doesn't exist", subscription))]
@@ -104,7 +104,7 @@ impl Client {
     pub async fn new(project_id: &str, authenticator: AuthProvider) -> Result<Client> {
         let client = pubsub::Client::from_credentials(project_id, authenticator.into())
             .await
-            .context(FailedToInitializeClient)?;
+            .context(InitializeClientSnafu)?;
         Ok(Client {
             client: Mutex::from(client),
         })
@@ -139,11 +139,11 @@ pub struct Topic {
 
 impl Topic {
     async fn new(topic_id: &str, client: &mut pubsub::Client) -> Result<Self> {
-        let topic = client.topic(topic_id).await.context(FailedToGetTopic)?;
+        let topic = client.topic(topic_id).await.context(GetTopicSnafu)?;
 
         ensure!(
             topic.is_some(),
-            TopicDoesntExist {
+            TopicDoesntExistSnafu {
                 topic: String::from(topic_id)
             }
         );
@@ -155,13 +155,13 @@ impl Topic {
 
     /// Publish a message to this topic.
     pub async fn publish<T: Serialize>(&self, body: T) -> Result<()> {
-        let data = serde_json::to_vec(&body).context(MessageSerializeError)?;
+        let data = serde_json::to_vec(&body).context(MessageSerializeSnafu)?;
 
         let mut topic_guard = self.topic.lock().await;
         (*topic_guard)
             .publish(data)
             .await
-            .context(MessagePublishError)?;
+            .context(MessagePublishSnafu)?;
 
         Ok(())
     }
@@ -194,11 +194,11 @@ where
         let subscription = client
             .subscription(subscription_id)
             .await
-            .context(FailedToGetSubscription)?;
+            .context(GetSubscriptionSnafu)?;
 
         ensure!(
             subscription.is_some(),
-            SubscriptionDoesntExist {
+            SubscriptionDoesntExistSnafu {
                 subscription: String::from(subscription_id)
             }
         );

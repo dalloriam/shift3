@@ -19,9 +19,9 @@ type PluginLoadFn = fn() -> Box<Plugin>;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    FailedToLoadLibrary { source: libloading::Error },
-    FailedToOpenSearchPath { source: io::Error },
-    InternalPluginError { source: PlugError },
+    LoadLibrary { source: libloading::Error },
+    OpenSearchPath { source: io::Error },
+    InternalPlugin { source: PlugError },
     MissingSymbol { source: libloading::Error },
     SearchPathDoesNotExist,
     SearchPathIsAFile,
@@ -37,12 +37,12 @@ struct PluginHandle {
 
 impl PluginHandle {
     pub fn load<P: AsRef<Path>>(library_path: P) -> Result<PluginHandle> {
-        let library = Library::new(library_path.as_ref()).context(FailedToLoadLibrary)?;
+        let library = Library::new(library_path.as_ref()).context(LoadLibrarySnafu)?;
 
         let plugin_loader: libloading::Symbol<PluginLoadFn> = unsafe {
             library
                 .get(PLUGIN_INIT_SYMBOL.as_bytes())
-                .context(MissingSymbol)?
+                .context(MissingSymbolSnafu)?
         };
 
         let plugin_box = plugin_loader();
@@ -102,11 +102,11 @@ impl PluginHost {
         let paths_copy = self.search_paths.clone();
 
         for path in paths_copy.into_iter() {
-            ensure!(path.exists(), SearchPathDoesNotExist);
-            ensure!(path.is_dir(), SearchPathIsAFile);
+            ensure!(path.exists(), SearchPathDoesNotExistSnafu);
+            ensure!(path.is_dir(), SearchPathIsAFileSnafu);
 
             for entry in fs::read_dir(path)
-                .context(FailedToOpenSearchPath)?
+                .context(OpenSearchPathSnafu)?
                 .filter_map(|e| e.ok())
             {
                 let entry_path = entry.path();

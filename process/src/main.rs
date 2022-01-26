@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread;
@@ -8,7 +8,7 @@ use std::time;
 
 use anyhow::{anyhow, Result};
 
-use clap::Clap;
+use clap::Parser;
 
 use process::Node;
 
@@ -31,7 +31,7 @@ fn wait_until_ctrlc() -> Result<()> {
 }
 
 #[tokio::main]
-async fn main_loop(config_file_path: &PathBuf) -> Result<()> {
+async fn main_loop(config_file_path: &Path) -> Result<()> {
     let cfg_format = polyglot::Format::try_from(
         config_file_path
             .extension()
@@ -48,7 +48,7 @@ async fn main_loop(config_file_path: &PathBuf) -> Result<()> {
     node.stop()
 }
 
-#[derive(Clap, Debug)]
+#[derive(Parser, Debug)]
 #[clap(
     version = "0.1.0",
     author = "William Dussault",
