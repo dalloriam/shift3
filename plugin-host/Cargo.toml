@@ -11,6 +11,6 @@ tempfile = "3"
 
 [dependencies]
 libloading = "0.6"
-log = "=0.4.14"
+log = "=0.4.16"
 plugin-core = {path = "../plugin-core"}
 snafu = "0.7"
