@@ -11,7 +11,7 @@ tempfile = "3"
 [dependencies]
 tokio-async-std = "1.5"
 async-trait = "0.1"
-base64 = "0.13"
+base64 = "0.20"
 google-cloud = {git = "https://github.com/dalloriam/google-cloud-rs", features = ["full"]}
 log = "=0.4.17"
 serde = "^1.0"
